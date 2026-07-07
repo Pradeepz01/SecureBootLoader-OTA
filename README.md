@@ -1,26 +1,5 @@
 # SecureBootLoader-OTA
-                 Laptop
-      (Python OTA Server)
-                │
-           WiFi (HTTP/TCP)
-                │
-              ESP32
-      (Communication Module)
-                │ UART
-                ▼
-      +-----------------------+
-      |   STM32 Bootloader    |
-      |-----------------------|
-      | Flash Driver          |
-      | SHA-256 Verification  |
-      | Signature Check       |
-      | Version Check         |
-      | Rollback Logic        |
-      +-----------+-----------+
-                  │
-          Flash Memory (A/B Slots)
-                  │
-          Verified Application
+
 A secure firmware update framework for STM32 microcontrollers featuring a custom bootloader, secure firmware verification, rollback support, and Over-the-Air (OTA) update capability using an ESP32 communication module.
 
 > **Project Status:** 🚧 In Development
@@ -53,22 +32,28 @@ A secure firmware update framework for STM32 microcontrollers featuring a custom
 
 ## Planned Architecture
 
-```text
-                Laptop
-        (Firmware Server)
+             Laptop
+       (Python OTA Server)
                │
-          USB-UART / Wi-Fi
+        WiFi (HTTP/TCP)
                │
-            ESP32 (OTA)
-               │
-             UART
-               │
-        STM32 Bootloader
-               │
-    ┌──────────┴──────────┐
-    │                     │
-Application A      Application B
-```
+             ESP32
+      (Communication Module)
+               │ UART
+                ▼
+      +-----------------------+
+      |   STM32 Bootloader    |
+      |-----------------------|
+      | Flash Driver          |
+      | SHA-256 Verification  |
+      | Signature Check       |
+      | Version Check         |
+      | Rollback Logic        |
+      +-----------+-----------+
+                │
+        Flash Memory (A/B Slots)
+                │
+        Verified Application
 
 ## Technologies
 
