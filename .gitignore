@@ -1,0 +1,25 @@
+﻿# STM32CubeIDE build outputs
+Debug/
+Release/
+*.o
+*.d
+*.su
+*.cyclo
+*.elf
+*.map
+*.list
+
+# Preserved sample firmware binaries
+!firmware_binaries/*.bin
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini

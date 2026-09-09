@@ -1,204 +1,181 @@
-# SecureBootLoader-OTA
+﻿# SecureBootLoader-OTA
 
 Bare-metal secure bootloader + OTA firmware update system for the **STM32F446RE**, built from scratch in register-level Embedded C — no HAL.
 
-> **Status:** 🚧 In Development
-
-<details>
-<summary><b>📄 Abstract (click to expand)</b></summary>
-
-<br>
-
-This project builds a secure firmware update system for the STM32F446RE entirely at the register level (bare-metal, no HAL/LL libraries). The goal is to understand and implement every layer of a bootloader — memory layout, flash programming, UART protocols, cryptographic verification, and rollback — before adding wireless OTA updates via an ESP32.
-
-The firmware is split into two independent parts: a **Bootloader** and an **Application**. The bootloader decides which firmware to run, receives new firmware over UART, verifies it, and only then hands control to the application. If a new update is bad, the bootloader falls back to the last working version automatically.
-
-</details>
-
-<details>
-<summary><b>🧭 Workflow / Development Phases (click each to expand)</b></summary>
-
-<br>
-
-<details>
-<summary><b>Phase 1 — Bare-Metal Basics (Week 1)</b></summary>
-<br>
-
-Learn STM32F446RE at the register level before touching the bootloader.
-
-- Clock configuration (RCC)
-- GPIO via registers (no HAL)
-- UART setup and communication via registers
-- Linker scripts, startup files, memory map basics
-- Reading the reference manual and datasheet directly
-
-</details>
-
-<details>
-<summary><b>Phase 2 — Simple Bootloader (Laptop-flashed)</b></summary>
-<br>
-
-Build the first working bootloader, flashed directly via ST-Link from the laptop.
-
-- Bootloader occupies a fixed flash region
-- Bootloader jumps to application at a fixed address
-- No update mechanism yet — just proving the jump works
-- Understanding vector table relocation (VTOR)
-
-</details>
-
-<details>
-<summary><b>Phase 3 — Splitting Firmware (Bootloader + Application)</b></summary>
-<br>
-
-Divide flash into two independent regions.
-
-- Separate linker scripts for Bootloader and Application
-- Bootloader region + Application region defined in flash
-- Bootloader always runs first, then jumps to Application
-- Each part is compiled and flashed as its own binary
-
-</details>
-
-<details>
-<summary><b>Phase 4 — UART Firmware Update (PuTTY / CoolTerm)</b></summary>
-<br>
-
-Update the Application over UART instead of ST-Link.
-
-- PC sends new firmware binary over UART using PuTTY or CoolTerm
-- Bootloader receives the binary and writes it to flash
-- Simple UART protocol: start byte, size, data, ACK/NACK
-- Manual trigger to enter "update mode" on boot
-
-</details>
-
-<details>
-<summary><b>Phase 5 — Verification + Rollback</b></summary>
-<br>
-
-Make updates safe.
-
-- SHA-256 hash check on received firmware
-- Digital signature check to confirm authenticity
-- Firmware version check (blocks downgrade attacks)
-- Dual-bank flash (A/B slots) — new firmware never overwrites the working copy
-- Automatic rollback to last good firmware if new image fails checks or fails to boot
-
-</details>
-
-<details>
-<summary><b>Phase 6 — OTA via ESP32 (Final)</b></summary>
-<br>
-
-Add wireless delivery on top of the same verified update pipeline.
-
-- Python OTA server hosts firmware on the laptop
-- ESP32 connects over Wi-Fi and downloads the firmware
-- ESP32 forwards the firmware to STM32 over UART
-- STM32 bootloader treats it exactly like Phase 4/5 — no logic change needed
-- Single-bank OTA optimization using ESP32 storage as staging (stretch goal)
-
-</details>
-
-</details>
-
-<details>
-<summary><b>⚙️ Features</b></summary>
-<br>
-
-- Bare-metal STM32F446RE bootloader (register-level, no HAL)
-- Dual-bank firmware update mechanism (A/B slots)
-- UART-based firmware upload (PuTTY / CoolTerm)
-- Secure boot process with pre-execution validation
-- SHA-256 firmware integrity verification
-- Digital signature verification
-- Firmware version validation (anti-rollback)
-- Automatic rollback on failed update
-- OTA firmware updates via ESP32 (planned)
-
-</details>
-
-<details>
-<summary><b>🗺️ Architecture</b></summary>
-<br>
-
-```
-             Laptop
-       (Python OTA Server)
-               │
-        Wi-Fi (HTTP/TCP)
-               │
-             ESP32
-      (Communication Module)
-               │ UART
-               ▼
-      +-----------------------+
-      |   STM32 Bootloader    |
-      |   (Bare-Metal, C)     |
-      |------------------------|
-      | Flash Driver           |
-      | SHA-256 Verification   |
-      | Signature Check        |
-      | Version Check          |
-      | Rollback Logic         |
-      +-----------+-----------+
-                  │
-        Flash Memory (A/B Slots)
-                  │
-        Verified Application
-```
-
-</details>
-
-<details>
-<summary><b>✅ Roadmap</b></summary>
-<br>
-
-- [x] Project Planning
-- [ ] Bare-Metal Basics (Clocks, GPIO, UART)
-- [ ] Simple Bootloader + Jump-to-Application
-- [ ] Split Bootloader / Application (Linker Scripts)
-- [ ] UART Firmware Update (PuTTY/CoolTerm)
-- [ ] Dual-Bank Flash Management
-- [ ] SHA-256 Firmware Verification
-- [ ] Digital Signature Verification
-- [ ] Firmware Version Management
-- [ ] Rollback Mechanism
-- [ ] ESP32-Based OTA Update
-- [ ] Single-Bank OTA Optimization
-
-</details>
-
-<details>
-<summary><b>🛠️ Technologies</b></summary>
-<br>
-
-- STM32F446RE (Bare-Metal, register-level)
-- Embedded C
-- STM32CubeIDE / Makefile + GCC toolchain
-- UART Communication (PuTTY / CoolTerm)
-- Flash Memory Programming
-- SHA-256
-- Digital Signatures
-- ESP32 (planned)
-- OTA Firmware Update
-
-</details>
-
-<details>
-<summary><b>🎯 Objectives</b></summary>
-<br>
-
-- Learn STM32 internals through bare-metal, register-level programming.
-- Build a custom bootloader from scratch (no HAL).
-- Implement authenticated, verifiable firmware updates.
-- Prevent execution of tampered or unauthorized firmware.
-- Support reliable rollback on failed updates.
-- Enable wireless firmware updates using an ESP32.
-
-</details>
+> **Status:** 🚀 **Phases 1–5 Implemented & Hardware Tested on STM32F446RE**  
+> Features working: Register-level Drivers • Packet Protocol • Hardware CRC-32 Verification • Dual-Slot (A/B) Flash Management • Sector 3 Metadata Table • Automatic Oldest-Slot Replacement • Instant Rollback • Host Python Tool.
 
 ---
 
-**Note:** Every phase builds directly on the previous one — bare-metal fundamentals first, then a minimal bootloader, then splitting firmware, then UART updates, then security + rollback, and finally OTA over ESP32.
+## 📄 Overview
+
+This project implements an embedded secure bootloader and dual-slot update system for the **STM32F446RE** (ARM Cortex-M4) entirely at the register level (no STM32 HAL or LL libraries).
+
+The system partitions internal flash memory into independent execution slots (**Slot 1** and **Slot 2**) and manages runtime metadata in a dedicated flash sector. New firmware images are streamed over UART using a framed packet protocol with **hardware CRC-32** integrity checking. The bootloader automatically identifies the oldest slot, flashes the new image, updates the metadata table, and boots into the new version. If an update causes issues, a single rollback command instantly restores the previous working version.
+
+---
+
+## 🗺️ Flash Memory Layout (STM32F446RE - 512 KB)
+
+| Sector | Address Range | Size | Description |
+|---|---|---|---|
+| **Sector 0** | `0x0800 0000 - 0x0800 3FFF` | 16 KB | Bootloader Code & Vector Table |
+| **Sector 1** | `0x0800 4000 - 0x0800 7FFF` | 16 KB | Bootloader Code |
+| **Sector 2** | `0x0800 8000 - 0x0800 BFFF` | 16 KB | Bootloader Code |
+| **Sector 3** | `0x0800 C000 - 0x0800 FFFF` | 16 KB | **Metadata Table** (Slot info, active flag, versions, CRCs) |
+| **Sector 4** | `0x0801 0000 - 0x0801 FFFF` | 64 KB | **Application Slot 1** (Firmware A) |
+| **Sector 5** | `0x0802 0000 - 0x0803 FFFF` | 128 KB | **Application Slot 2** (Firmware B) |
+| **Sector 6** | `0x0804 0000 - 0x0805 FFFF` | 128 KB | Reserved / User Storage |
+| **Sector 7** | `0x0806 0000 - 0x0807 FFFF` | 128 KB | Reserved / User Storage |
+
+---
+
+## 📦 Packet Protocol & CRC-32 Verification
+
+Every frame sent between the host PC and the bootloader is framed and protected by STM32's hardware CRC engine:
+
+```
++-------------+--------------+-----------------+------------------+-----------------+
+| START BYTE  | COMMAND CODE | LENGTH (Bytes)  | DATA PAYLOAD     | CRC-32 (4 Bytes)|
+| 1 Byte (A5) | 1 Byte       | 1 Byte (0-255)  | N Bytes          | Big-Endian      |
++-------------+--------------+-----------------+------------------+-----------------+
+```
+
+- **Start Byte:** `0xA5`
+- **CRC-32 Polynomial:** `0x04C11DB7` (Standard Ethernet / STM32 Hardware CRC Engine, init `0xFFFFFFFF`)
+- **Verification:** The bootloader computes CRC-32 over `[COMMAND, LENGTH, DATA...]` using STM32's on-chip CRC peripheral. The packet is processed only if computed CRC matches received CRC; otherwise, an immediate `NACK (0x7F)` is returned.
+
+---
+
+## 📡 Supported Bootloader Commands
+
+| Command | Opcode | Description |
+|---|---|---|
+| `BL_GET_VER` | `0x51` | Returns bootloader version (e.g., `0x10` for v1.0) |
+| `BL_GET_CHIP_ID` | `0x52` | Returns STM32 MCU Chip ID (`0x0446`) |
+| `BL_FLASH_ERASE` | `0x53` | Erases specified flash sector (0–7) with sector protection |
+| `BL_MEM_WRITE` | `0x54` | Writes up to 128 bytes to flash at designated address |
+| `BL_GO_TO_ADDR` | `0x55` | Relocates vector table (`VTOR`) and executes application |
+| `BL_GET_SLOT_INFO` | `0x56` | Returns current metadata: active slot, slot 1/2 validity, versions, sizes, and CRCs |
+| `BL_ROLLBACK` | `0x57` | Switches active slot to the alternate valid slot, persists to Sector 3, and boots |
+| `BL_ACTIVATE_SLOT` | `0x58` | Sets designated slot (1 or 2) as active in metadata table |
+
+---
+
+## 🔄 Dual-Slot (A/B) Update & Rollback Mechanism
+
+1. **Active Boot Check:** On power-up, the bootloader reads Sector 3 (`0x0800C000`). If valid, it checks the active slot's initial stack pointer and reset handler, relocates `SCB->VTOR`, and branches to user code.
+2. **Oldest-Slot Replacement:** When `--update` is issued, the host tool queries slot metadata:
+   - If Slot 1 is active (e.g. v1), the update targets Slot 2.
+   - If both slots are valid (e.g. Slot 1 = v1, Slot 2 = v2), the update replaces whichever slot has the lower version number.
+3. **Chunked Flashing:** Erases target sector, writes 128-byte chunks with CRC-32 verification per chunk, and writes updated metadata entry.
+4. **Zero-Downtime Rollback:** If a new firmware update contains a regression, running `--rollback` toggles the active slot to the previous working version in Flash Sector 3 and boots immediately.
+
+---
+
+## 📁 Repository Structure
+
+```
+SecureBootLoader-OTA/
+├── bootloader/                      # Bare-metal STM32CubeIDE Bootloader project
+│   ├── Inc/
+│   │   ├── bootloader.h            # Command codes, metadata structs, prototypes
+│   │   └── systick.h               # Systick delay timer
+│   ├── Src/
+│   │   ├── bootloader.c            # Command handler, CRC, flash programming, jump & rollback
+│   │   ├── main.c                  # System init, UART setup, boot timeout logic
+│   │   └── systick.c               # SysTick driver
+│   ├── drivers/                    # Register-level peripheral drivers
+│   │   ├── Inc/                    # GPIO, USART, Flash, CRC, SPI headers & stm32f446xx.h
+│   │   └── src/                    # Peripheral register driver implementations
+│   ├── Startup/                    # Bare-metal startup assembly
+│   └── STM32F446RETX_FLASH.ld      # Bootloader Linker Script (Sectors 0-2)
+│
+├── application/                     # Sample Application project
+│   ├── Inc/ & Src/                 # Blinky application with version printing
+│   ├── STM32F446RETX_FLASH.ld      # Linker script for Slot 1 (0x08010000)
+│   ├── STM32F446RETX_FLASH_SLOT2.ld# Linker script for Slot 2 (0x08020000)
+│   └── build_slots.py              # Automated script building versions for both slots
+│
+├── firmware_binaries/               # Pre-compiled binaries for verification
+│   ├── application_v1.bin          # Slot 1 application (200ms blink)
+│   ├── application_v2.bin          # Slot 2 application (800ms blink)
+│   └── application_v3.bin          # Slot 1 application (50ms blink)
+│
+├── boot.py                         # Python host CLI tool for UART flashing & management
+└── README.md
+```
+
+---
+
+## 💻 Host Tool Usage (`boot.py`)
+
+The Python host tool (`boot.py`) handles all UART packet framing, hardware CRC-32 calculation, and slot management.
+
+### Requirements
+```bash
+pip install pyserial
+```
+
+### 1. Query System & Slot Metadata
+```bash
+python boot.py --port COM6 --slot-info
+```
+Output:
+```
+==================================================
+              DUAL-SLOT METADATA TABLE            
+==================================================
+  Active Slot : Slot 1 (Address: 0x08010000)
+  Boot Status : Ready
+--------------------------------------------------
+  [SLOT 1] (0x08010000, Sector 4)
+    Status  : VALID
+    Version : v1
+    Size    : 924 bytes
+    CRC32   : 0xC316CEFE
+--------------------------------------------------
+  [SLOT 2] (0x08020000, Sector 5)
+    Status  : VALID
+    Version : v2
+    Size    : 924 bytes
+    CRC32   : 0x1AEB4527
+==================================================
+```
+
+### 2. Verify CRC & Handshake
+```bash
+python boot.py --port COM6 --verify-crc
+```
+
+### 3. Update Firmware (Replaces Oldest Slot)
+```bash
+python boot.py --port COM6 --update firmware_binaries/application_v2.bin 2
+```
+
+### 4. Rollback to Previous Version
+```bash
+python boot.py --port COM6 --rollback
+```
+
+---
+
+## 🧭 Development Roadmap
+
+- [x] Register-level peripheral drivers (RCC, GPIO, USART2, Flash, CRC)
+- [x] Bare-metal bootloader & vector table relocation (`SCB->VTOR`)
+- [x] Split firmware memory maps & independent linker scripts
+- [x] Framed UART packet protocol (`0xA5` sync frame)
+- [x] Hardware CRC-32 validation on every packet
+- [x] Dual-slot A/B flash management (Slot 1 & Slot 2)
+- [x] Sector 3 non-volatile metadata storage
+- [x] Automatic oldest-slot replacement algorithm
+- [x] Fast rollback mechanism
+- [x] Host CLI utility (`boot.py`)
+- [ ] ESP32 Wi-Fi bridge for over-the-air (OTA) updates (Phase 6)
+- [ ] Cryptographic firmware signing & ECDSA verification
+
+---
+
+## 📄 License
+This project is open-source under the MIT License.
