@@ -1,4 +1,4 @@
-﻿# SecureBootLoader-OTA
+# SecureBootLoader-OTA
 
 Bare-metal secure bootloader + OTA firmware update system for the **STM32F446RE**, built from scratch in register-level Embedded C — no HAL.
 
@@ -97,10 +97,19 @@ SecureBootLoader-OTA/
 │   ├── STM32F446RETX_FLASH_SLOT2.ld# Linker script for Slot 2 (0x08020000)
 │   └── build_slots.py              # Automated script building versions for both slots
 │
-├── firmware_binaries/               # Pre-compiled binaries for verification
-│   ├── application_v1.bin          # Slot 1 application (200ms blink)
-│   ├── application_v2.bin          # Slot 2 application (800ms blink)
-│   └── application_v3.bin          # Slot 1 application (50ms blink)
+├── test_applications/               # Pre-compiled binaries for hardware verification
+│   ├── app_blinking_led_slot1.bin  # Slot 1 application (Autonomous 250ms blink)
+│   ├── app_blinking_led_slot2.bin  # Slot 2 application (Autonomous 250ms blink)
+│   ├── app_button_led_slot1.bin    # Slot 1 application (Button PC13 controls LED PA5)
+│   ├── app_button_led_slot2.bin    # Slot 2 application (Button PC13 controls LED PA5)
+│   └── README.md                   # Full testing and verification guide
+│
+├── firmware_binaries/               # Production & benchmark release binaries
+│   ├── app_blinking_led.bin        # Default Blinking LED binary
+│   ├── app_button_led.bin          # Default Button-Controlled LED binary
+│   ├── application_v1.bin          # Slot 1 benchmark application (200ms blink)
+│   ├── application_v2.bin          # Slot 2 benchmark application (800ms blink)
+│   └── application_v3.bin          # Slot 1 benchmark application (50ms blink)
 │
 ├── boot.py                         # Python host CLI tool for UART flashing & management
 └── README.md
