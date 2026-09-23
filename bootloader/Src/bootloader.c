@@ -276,6 +276,14 @@ void Bootloader_ReadCommand(void)
             Bootloader_HandleActivateSlot(packet_length);
             break;
 
+        case BL_SET_BAUD:
+            Bootloader_HandleSetBaud(packet_length);
+            break;
+
+        case BL_BENCHMARK_HW:
+            Bootloader_HandleBenchmarkHW(packet_length);
+            break;
+
         default:
             Bootloader_SendNACK();
             break;
@@ -504,5 +512,134 @@ void Bootloader_JumpToApplication(void)
     while (1)
     {
     	 Bootloader_ReadCommand();
+    }
+}
+
+void Bootloader_HandleSetBaud(uint8_t packet_length)
+{
+    uint32_t baud;
+    /* baud rate in bl_rx_buffer[1..4] */
+    baud = (uint32_t)bl_rx_buffer[1] |
+           ((uint32_t)bl_rx_buffer[2] << 8) |
+           ((uint32_t)bl_rx_buffer[3] << 16) |
+           ((uint32_t)bl_rx_buffer[4] << 24);
+
+    Bootloader_SendACK();
+    uint8_t status = 0x00;
+    USART_SendData(USART2, &status, 1);
+
+    /* Wait until transmission complete (TC=1) before changing BRR */
+    while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == FLAG_RESET);
+
+    /* Short stabilization delay */
+    for (volatile uint32_t i = 0; i < 5000; i++);
+
+    /* Reconfigure baud rate */
+    USART_SetBaudRate(USART2, baud);
+}
+
+void Bootloader_HandleBenchmarkHW(uint8_t packet_length)
+{
+    uint8_t subcmd = bl_rx_buffer[1];
+
+    if (subcmd == 0x01) /* Subcmd 1: Boot Initialization Timing */
+    {
+        Bootloader_SendACK();
+        uint8_t resp[9];
+        resp[0] = 0x00; /* status */
+        resp[1] = (uint8_t)(g_boot_init_cycles & 0xFF);
+        resp[2] = (uint8_t)((g_boot_init_cycles >> 8) & 0xFF);
+        resp[3] = (uint8_t)((g_boot_init_cycles >> 16) & 0xFF);
+        resp[4] = (uint8_t)((g_boot_init_cycles >> 24) & 0xFF);
+        uint32_t clk = 16000000;
+        resp[5] = (uint8_t)(clk & 0xFF);
+        resp[6] = (uint8_t)((clk >> 8) & 0xFF);
+        resp[7] = (uint8_t)((clk >> 16) & 0xFF);
+        resp[8] = (uint8_t)((clk >> 24) & 0xFF);
+        USART_SendData(USART2, resp, 9);
+    }
+    else if (subcmd == 0x02) /* Subcmd 2: Pure Flash Word / Chunk Programming Benchmark */
+    {
+        uint32_t num_words = bl_rx_buffer[2]; /* 1, 16, 32 words */
+        if (num_words == 0 || num_words > 32) num_words = 1;
+        uint32_t test_addr = 0x08010000U;
+        uint32_t test_data = 0xA5A55A5AU;
+
+        FLASH_Unlock();
+        uint32_t t_start = DWT_CYCCNT;
+        for (uint32_t w = 0; w < num_words; w++)
+        {
+            FLASH_ProgramWord(test_addr + (w * 4U), test_data);
+        }
+        uint32_t t_elapsed = DWT_CYCCNT - t_start;
+        FLASH_Lock();
+
+        Bootloader_SendACK();
+        uint8_t resp[9];
+        resp[0] = 0x00;
+        resp[1] = (uint8_t)(t_elapsed & 0xFF);
+        resp[2] = (uint8_t)((t_elapsed >> 8) & 0xFF);
+        resp[3] = (uint8_t)((t_elapsed >> 16) & 0xFF);
+        resp[4] = (uint8_t)((t_elapsed >> 24) & 0xFF);
+        uint32_t bytes_prog = num_words * 4U;
+        resp[5] = (uint8_t)(bytes_prog & 0xFF);
+        resp[6] = (uint8_t)((bytes_prog >> 8) & 0xFF);
+        resp[7] = (uint8_t)((bytes_prog >> 16) & 0xFF);
+        resp[8] = (uint8_t)((bytes_prog >> 24) & 0xFF);
+        USART_SendData(USART2, resp, 9);
+    }
+    else if (subcmd == 0x03) /* Subcmd 3: Pure Hardware CRC-32 Execution Benchmark */
+    {
+        uint32_t req_size = (uint32_t)bl_rx_buffer[2] | ((uint32_t)bl_rx_buffer[3] << 8);
+        if (req_size == 0 || req_size > 4096) req_size = 64;
+
+        static uint8_t crc_test_buf[4096];
+        for (uint32_t i = 0; i < req_size; i++)
+        {
+            crc_test_buf[i] = (uint8_t)(i ^ 0x5A);
+        }
+
+        uint32_t t_start = DWT_CYCCNT;
+        uint32_t crc_val = Bootloader_CalculateCRC(crc_test_buf, req_size);
+        uint32_t t_elapsed = DWT_CYCCNT - t_start;
+
+        Bootloader_SendACK();
+        uint8_t resp[13];
+        resp[0] = 0x00;
+        resp[1] = (uint8_t)(crc_val & 0xFF);
+        resp[2] = (uint8_t)((crc_val >> 8) & 0xFF);
+        resp[3] = (uint8_t)((crc_val >> 16) & 0xFF);
+        resp[4] = (uint8_t)((crc_val >> 24) & 0xFF);
+        resp[5] = (uint8_t)(t_elapsed & 0xFF);
+        resp[6] = (uint8_t)((t_elapsed >> 8) & 0xFF);
+        resp[7] = (uint8_t)((t_elapsed >> 16) & 0xFF);
+        resp[8] = (uint8_t)((t_elapsed >> 24) & 0xFF);
+        resp[9] = (uint8_t)(req_size & 0xFF);
+        resp[10] = (uint8_t)((req_size >> 8) & 0xFF);
+        resp[11] = (uint8_t)((req_size >> 16) & 0xFF);
+        resp[12] = (uint8_t)((req_size >> 24) & 0xFF);
+        USART_SendData(USART2, resp, 13);
+    }
+    else if (subcmd == 0x04) /* Subcmd 4: Pure Flash Erase Benchmark */
+    {
+        uint8_t sec = bl_rx_buffer[2];
+        FLASH_Unlock();
+        uint32_t t_start = DWT_CYCCNT;
+        FLASH_EraseSector(sec);
+        uint32_t t_elapsed = DWT_CYCCNT - t_start;
+        FLASH_Lock();
+
+        Bootloader_SendACK();
+        uint8_t resp[5];
+        resp[0] = 0x00;
+        resp[1] = (uint8_t)(t_elapsed & 0xFF);
+        resp[2] = (uint8_t)((t_elapsed >> 8) & 0xFF);
+        resp[3] = (uint8_t)((t_elapsed >> 16) & 0xFF);
+        resp[4] = (uint8_t)((t_elapsed >> 24) & 0xFF);
+        USART_SendData(USART2, resp, 5);
+    }
+    else
+    {
+        Bootloader_SendNACK();
     }
 }

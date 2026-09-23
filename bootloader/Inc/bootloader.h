@@ -28,6 +28,14 @@
 #define BL_GET_SLOT_INFO       0x56
 #define BL_ROLLBACK            0x57
 #define BL_ACTIVATE_SLOT       0x58
+#define BL_SET_BAUD            0x59
+#define BL_BENCHMARK_HW        0x5A
+
+#define DEMCR                  (*(volatile uint32_t *)0xE000EDFCU)
+#define DWT_CTRL               (*(volatile uint32_t *)0xE0001000U)
+#define DWT_CYCCNT             (*(volatile uint32_t *)0xE0001004U)
+
+extern volatile uint32_t g_boot_init_cycles;
 
 #define BL_VERSION_MAJOR       1
 #define BL_VERSION_MINOR       1
@@ -68,6 +76,8 @@ void Bootloader_HandleVerifyCRC(uint8_t packet_length);
 void Bootloader_HandleGetSlotInfo(void);
 void Bootloader_HandleRollback(void);
 void Bootloader_HandleActivateSlot(uint8_t packet_length);
+void Bootloader_HandleSetBaud(uint8_t packet_length);
+void Bootloader_HandleBenchmarkHW(uint8_t packet_length);
 
 void Bootloader_SendACK(void);
 void Bootloader_SendNACK(void);

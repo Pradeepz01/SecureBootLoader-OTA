@@ -9,8 +9,14 @@ void delay(void){
 	for(uint32_t i = 0; i<5000000 ;i++);
 }
 
+volatile uint32_t g_boot_init_cycles = 0;
+
 int main(void)
 {
+	/* Initialize DWT cycle counter immediately on reset */
+	DEMCR |= (1U << 24);
+	DWT_CYCCNT = 0;
+	DWT_CTRL |= (1U << 0);
 
 	GPIO_Handle_t Led;
 
@@ -91,6 +97,9 @@ int main(void)
 
 	/* Indicate bootloader is ready (LED ON) */
 	GPIO_WriteToOutputPin(GPIOA, GPIO_PIN_NO_5, 1);
+
+	/* Capture total initialization cycles from reset */
+	g_boot_init_cycles = DWT_CYCCNT;
 
 	while(1)
 	{
