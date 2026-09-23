@@ -54,7 +54,8 @@ const char* STA_PASS = "YOUR_WIFI_PASS";
 #define BL_GET_VERSION   0x51
 #define BL_FLASH_ERASE   0x52
 #define BL_MEM_WRITE     0x53
-#define BL_JUMP_APP      0x54
+#define BL_VERIFY_CRC    0x54
+#define BL_JUMP_APP      0x55
 #define BL_GET_SLOT_INFO 0x56
 #define BL_ROLLBACK      0x57
 #define BL_ACTIVATE_SLOT 0x58
