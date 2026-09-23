@@ -1,0 +1,640 @@
+{
+  "boot_time": {
+    "host_perceived_ms": {
+      "N": 50,
+      "Mean": 46.18235599999025,
+      "Median": 46.12210000050254,
+      "Min": 44.258000001718756,
+      "Max": 48.775700000987854,
+      "StdDev": 0.8243994309844705,
+      "CV_percent": 1.785096089477645,
+      "CI95": 0.2285118637977365
+    },
+    "mcu_init_cycles": {
+      "N": 50,
+      "Mean": 2567.0,
+      "Median": 2567.0,
+      "Min": 2567.0,
+      "Max": 2567.0,
+      "StdDev": 0.0,
+      "CV_percent": 0.0,
+      "CI95": 0.0
+    },
+    "mcu_init_us": {
+      "N": 50,
+      "Mean": 160.4375,
+      "Median": 160.4375,
+      "Min": 160.4375,
+      "Max": 160.4375,
+      "StdDev": 0.0,
+      "CV_percent": 0.0,
+      "CI95": 0.0
+    }
+  },
+  "flash_erase": {
+    "Sector_3": {
+      "N": 10,
+      "Mean": 252.286125,
+      "Median": 251.93503125,
+      "Min": 249.9960625,
+      "Max": 256.909125,
+      "StdDev": 1.780293233054525,
+      "CV_percent": 0.7056643456133488,
+      "CI95": 1.1034371778097032,
+      "Sector": 3,
+      "Size_KB": 16,
+      "Erase_Time_Per_KB_ms": 15.7678828125
+    },
+    "Sector_4": {
+      "N": 10,
+      "Mean": 533.2814000000001,
+      "Median": 535.276375,
+      "Min": 514.6369374999999,
+      "Max": 537.6073125,
+      "StdDev": 6.636916738026805,
+      "CV_percent": 1.2445430757620282,
+      "CI95": 4.113603612479713,
+      "Sector": 4,
+      "Size_KB": 64,
+      "Erase_Time_Per_KB_ms": 8.332521875000001
+    },
+    "Sector_5": {
+      "N": 10,
+      "Mean": 924.4049124999999,
+      "Median": 927.0470312499999,
+      "Min": 899.103875,
+      "Max": 931.4591250000001,
+      "StdDev": 9.230825027088816,
+      "CV_percent": 0.9985694474648107,
+      "CI95": 5.721324626544882,
+      "Sector": 5,
+      "Size_KB": 128,
+      "Erase_Time_Per_KB_ms": 7.221913378906249
+    }
+  },
+  "flash_programming": {
+    "1_Word_4B": {
+      "Bytes": 4,
+      "Words": 1,
+      "Program_Time_us": {
+        "N": 30,
+        "Mean": 14.2125,
+        "Median": 13.125,
+        "Min": 13.0625,
+        "Max": 24.0625,
+        "StdDev": 3.332450493721316,
+        "CV_percent": 23.447320976051476,
+        "CI95": 1.1925020940245232
+      },
+      "Throughput_KB_s": {
+        "N": 30,
+        "Mean": 284.19993520733647,
+        "Median": 297.6190476190476,
+        "Min": 162.33766233766235,
+        "Max": 299.0430622009569,
+        "StdDev": 41.2690228016819,
+        "CV_percent": 14.521123226708097,
+        "CI95": 14.767930146921799
+      },
+      "Time_Per_Word_us": {
+        "N": 30,
+        "Mean": 14.2125,
+        "Median": 13.125,
+        "Min": 13.0625,
+        "Max": 24.0625,
+        "StdDev": 3.332450493721316,
+        "CV_percent": 23.447320976051476,
+        "CI95": 1.1925020940245232
+      }
+    },
+    "16_Words_64B": {
+      "Bytes": 64,
+      "Words": 16,
+      "Program_Time_us": {
+        "N": 30,
+        "Mean": 213.025,
+        "Median": 195.6875,
+        "Min": 195.5,
+        "Max": 369.625,
+        "StdDev": 53.02891056398809,
+        "CV_percent": 24.89328039619204,
+        "CI95": 18.97615193700258
+      },
+      "Throughput_KB_s": {
+        "N": 30,
+        "Mean": 304.42700329528924,
+        "Median": 319.38677738741615,
+        "Min": 169.09029421711193,
+        "Max": 319.693094629156,
+        "StdDev": 45.854600664031295,
+        "CV_percent": 15.062593057670734,
+        "CI95": 16.40885811073312
+      },
+      "Time_Per_Word_us": {
+        "N": 30,
+        "Mean": 13.3140625,
+        "Median": 12.23046875,
+        "Min": 12.21875,
+        "Max": 23.1015625,
+        "StdDev": 3.3143069102492557,
+        "CV_percent": 24.89328039619204,
+        "CI95": 1.1860094960626613
+      }
+    },
+    "32_Words_128B": {
+      "Bytes": 128,
+      "Words": 32,
+      "Program_Time_us": {
+        "N": 30,
+        "Mean": 425.07708333333335,
+        "Median": 390.3125,
+        "Min": 390.0,
+        "Max": 738.25,
+        "StdDev": 106.1191444245476,
+        "CV_percent": 24.964682544726127,
+        "CI95": 37.97424813385589
+      },
+      "Throughput_KB_s": {
+        "N": 30,
+        "Mean": 305.1766315067851,
+        "Median": 320.2562049639712,
+        "Min": 169.31933626820182,
+        "Max": 320.5128205128205,
+        "StdDev": 46.047090007472946,
+        "CV_percent": 15.088668414786262,
+        "CI95": 16.477739537648258
+      },
+      "Time_Per_Word_us": {
+        "N": 30,
+        "Mean": 13.283658854166667,
+        "Median": 12.197265625,
+        "Min": 12.1875,
+        "Max": 23.0703125,
+        "StdDev": 3.3162232632671125,
+        "CV_percent": 24.964682544726127,
+        "CI95": 1.1866952541829965
+      }
+    }
+  },
+  "crc_verification": {
+    "32B": {
+      "Size_Bytes": 32,
+      "Time_us": {
+        "N": 30,
+        "Mean": 63.625,
+        "Median": 63.625,
+        "Min": 63.625,
+        "Max": 63.625,
+        "StdDev": 0.0,
+        "CV_percent": 0.0,
+        "CI95": 0.0
+      },
+      "Throughput_MB_s": {
+        "N": 30,
+        "Mean": 0.4796475933202357,
+        "Median": 0.47964759332023577,
+        "Min": 0.47964759332023577,
+        "Max": 0.47964759332023577,
+        "StdDev": 5.646012854083702e-17,
+        "CV_percent": 1.1771168943016365e-14,
+        "CI95": 2.0203997520952348e-17
+      }
+    },
+    "64B": {
+      "Size_Bytes": 64,
+      "Time_us": {
+        "N": 30,
+        "Mean": 123.625,
+        "Median": 123.625,
+        "Min": 123.625,
+        "Max": 123.625,
+        "StdDev": 0.0,
+        "CV_percent": 0.0,
+        "CI95": 0.0
+      },
+      "Throughput_MB_s": {
+        "N": 30,
+        "Mean": 0.4937120829120325,
+        "Median": 0.49371208291203234,
+        "Min": 0.49371208291203234,
+        "Max": 0.49371208291203234,
+        "StdDev": 1.6938038562251105e-16,
+        "CV_percent": 3.4307522842759863e-14,
+        "CI95": 6.061199256285704e-17
+      }
+    },
+    "128B": {
+      "Size_Bytes": 128,
+      "Time_us": {
+        "N": 30,
+        "Mean": 243.625,
+        "Median": 243.625,
+        "Min": 243.625,
+        "Max": 243.625,
+        "StdDev": 0.0,
+        "CV_percent": 0.0,
+        "CI95": 0.0
+      },
+      "Throughput_MB_s": {
+        "N": 30,
+        "Mean": 0.5010582349923036,
+        "Median": 0.5010582349923037,
+        "Min": 0.5010582349923037,
+        "Max": 0.5010582349923037,
+        "StdDev": 1.1292025708167404e-16,
+        "CV_percent": 2.2536353899743514e-14,
+        "CI95": 4.0407995041904695e-17
+      }
+    },
+    "256B": {
+      "Size_Bytes": 256,
+      "Time_us": {
+        "N": 30,
+        "Mean": 483.625,
+        "Median": 483.625,
+        "Min": 483.625,
+        "Max": 483.625,
+        "StdDev": 0.0,
+        "CV_percent": 0.0,
+        "CI95": 0.0
+      },
+      "Throughput_MB_s": {
+        "N": 30,
+        "Mean": 0.5048139054019125,
+        "Median": 0.5048139054019126,
+        "Min": 0.5048139054019126,
+        "Max": 0.5048139054019126,
+        "StdDev": 1.1292025708167404e-16,
+        "CV_percent": 2.2368689902028644e-14,
+        "CI95": 4.0407995041904695e-17
+      }
+    },
+    "1024B": {
+      "Size_Bytes": 1024,
+      "Time_us": {
+        "N": 30,
+        "Mean": 1923.625,
+        "Median": 1923.625,
+        "Min": 1923.625,
+        "Max": 1923.625,
+        "StdDev": 0.0,
+        "CV_percent": 0.0,
+        "CI95": 0.0
+      },
+      "Throughput_MB_s": {
+        "N": 30,
+        "Mean": 0.5076678146728182,
+        "Median": 0.5076678146728183,
+        "Min": 0.5076678146728183,
+        "Max": 0.5076678146728183,
+        "StdDev": 1.1292025708167404e-16,
+        "CV_percent": 2.2242941903742488e-14,
+        "CI95": 4.0407995041904695e-17
+      }
+    },
+    "4096B": {
+      "Size_Bytes": 4096,
+      "Time_us": {
+        "N": 30,
+        "Mean": 7683.625,
+        "Median": 7683.625,
+        "Min": 7683.625,
+        "Max": 7683.625,
+        "StdDev": 0.0,
+        "CV_percent": 0.0,
+        "CI95": 0.0
+      },
+      "Throughput_MB_s": {
+        "N": 30,
+        "Mean": 0.5083863410824969,
+        "Median": 0.5083863410824968,
+        "Min": 0.5083863410824968,
+        "Max": 0.5083863410824968,
+        "StdDev": 1.1292025708167404e-16,
+        "CV_percent": 2.221150490417095e-14,
+        "CI95": 4.0407995041904695e-17
+      }
+    }
+  },
+  "multi_baud_rate": {
+    "115200_baud": {
+      "Baud_Rate": 115200,
+      "Theoretical_Max_Byte_Rate": 11520.0,
+      "Success_Count": 10,
+      "Total_Trials": 10,
+      "Success_Rate_Percent": 100.0,
+      "Total_Update_Time_s": {
+        "N": 10,
+        "Mean": 1.1194551499997032,
+        "Median": 1.111423950000244,
+        "Min": 0.9093434999995225,
+        "Max": 1.397451299999375,
+        "StdDev": 0.21635354932930212,
+        "CV_percent": 19.326683103772353,
+        "CI95": 0.13409731916546913
+      },
+      "Comm_Write_Time_s": {
+        "N": 10,
+        "Mean": 0.13235718000032648,
+        "Median": 0.13331509999989066,
+        "Min": 0.12458160000096541,
+        "Max": 0.1374221000005491,
+        "StdDev": 0.004385994200546346,
+        "CV_percent": 3.313756156285233,
+        "CI95": 0.002718467369691093
+      },
+      "Comm_Throughput_B_s": 6981.109751641134,
+      "E2E_Throughput_B_s": 825.4015357383857,
+      "UART_Utilization_Percent": 60.59991103855151
+    },
+    "230400_baud": {
+      "Baud_Rate": 230400,
+      "Theoretical_Max_Byte_Rate": 23040.0,
+      "Success_Count": 10,
+      "Total_Trials": 10,
+      "Success_Rate_Percent": 100.0,
+      "Total_Update_Time_s": {
+        "N": 10,
+        "Mean": 1.0675396100006764,
+        "Median": 1.0673771500005387,
+        "Min": 0.8692337000029511,
+        "Max": 1.2637021000009554,
+        "StdDev": 0.2041168609605521,
+        "CV_percent": 19.120307953765085,
+        "CI95": 0.1265129411379328
+      },
+      "Comm_Write_Time_s": {
+        "N": 10,
+        "Mean": 0.08951289000033284,
+        "Median": 0.09036005000052683,
+        "Min": 0.08503299999938463,
+        "Max": 0.09224380000159726,
+        "StdDev": 0.0024986116612007226,
+        "CV_percent": 2.7913428570917906,
+        "CI95": 0.0015486555521796446
+      },
+      "Comm_Throughput_B_s": 10322.535670522582,
+      "E2E_Throughput_B_s": 865.5416542337146,
+      "UART_Utilization_Percent": 44.802672181087594
+    },
+    "460800_baud": {
+      "Baud_Rate": 460800,
+      "Theoretical_Max_Byte_Rate": 46080.0,
+      "Success_Count": 10,
+      "Total_Trials": 10,
+      "Success_Rate_Percent": 100.0,
+      "Total_Update_Time_s": {
+        "N": 10,
+        "Mean": 1.0474990800001251,
+        "Median": 1.047115200000917,
+        "Min": 0.8519196000015654,
+        "Max": 1.2447641999970074,
+        "StdDev": 0.203485358351454,
+        "CV_percent": 19.425826927831736,
+        "CI95": 0.12612153176568738
+      },
+      "Comm_Write_Time_s": {
+        "N": 10,
+        "Mean": 0.06950374999978522,
+        "Median": 0.06932355000026291,
+        "Min": 0.06729129999803263,
+        "Max": 0.07295829999929992,
+        "StdDev": 0.0018409876023573574,
+        "CV_percent": 2.648760106272031,
+        "CI95": 0.0011410559376459973
+      },
+      "Comm_Throughput_B_s": 13294.246713347919,
+      "E2E_Throughput_B_s": 882.1010133964887,
+      "UART_Utilization_Percent": 28.850361791119617
+    },
+    "921600_baud": {
+      "Baud_Rate": 921600,
+      "Theoretical_Max_Byte_Rate": 92160.0,
+      "Success_Count": 10,
+      "Total_Trials": 10,
+      "Success_Rate_Percent": 100.0,
+      "Total_Update_Time_s": {
+        "N": 10,
+        "Mean": 1.0582007400000293,
+        "Median": 1.036216800001057,
+        "Min": 0.8289385999996739,
+        "Max": 1.3144900999977835,
+        "StdDev": 0.23158943440607704,
+        "CV_percent": 21.88520813225576,
+        "CI95": 0.14354061857166003
+      },
+      "Comm_Write_Time_s": {
+        "N": 10,
+        "Mean": 0.058033439999780966,
+        "Median": 0.05916705000163347,
+        "Min": 0.053549299998849165,
+        "Max": 0.06114009999873815,
+        "StdDev": 0.0030269271603078312,
+        "CV_percent": 5.215832734229188,
+        "CI95": 0.0018761088910476795
+      },
+      "Comm_Throughput_B_s": 15921.854710034206,
+      "E2E_Throughput_B_s": 873.1802625652808,
+      "UART_Utilization_Percent": 17.276318044741977
+    }
+  },
+  "chunk_size_evaluation": {
+    "64B": {
+      "Chunk_Size": 64,
+      "Packet_Count": 15,
+      "Frame_Efficiency_Percent": 86.03351955307262,
+      "Transaction_Efficiency_Percent": 83.69565217391305,
+      "Comm_Time_s": {
+        "N": 10,
+        "Mean": 0.14906188000022666,
+        "Median": 0.14987294999991718,
+        "Min": 0.14563360000101966,
+        "Max": 0.15196770000329707,
+        "StdDev": 0.0023207787269660524,
+        "CV_percent": 1.5569230221452484,
+        "CI95": 0.0014384335576058363
+      },
+      "Comm_Throughput_B_s": 6198.767921071403
+    },
+    "128B": {
+      "Chunk_Size": 128,
+      "Packet_Count": 8,
+      "Frame_Efficiency_Percent": 92.03187250996015,
+      "Transaction_Efficiency_Percent": 90.58823529411765,
+      "Comm_Time_s": {
+        "N": 10,
+        "Mean": 0.13380907000027947,
+        "Median": 0.13336979999985488,
+        "Min": 0.13052150000294205,
+        "Max": 0.13761840000006487,
+        "StdDev": 0.002220778833952801,
+        "CV_percent": 1.659662408496048,
+        "CI95": 0.0013764529817776102
+      },
+      "Comm_Throughput_B_s": 6905.361497528307
+    },
+    "200B": {
+      "Chunk_Size": 200,
+      "Packet_Count": 5,
+      "Frame_Efficiency_Percent": 94.8665297741273,
+      "Transaction_Efficiency_Percent": 93.90243902439023,
+      "Comm_Time_s": {
+        "N": 10,
+        "Mean": 0.1267346800006635,
+        "Median": 0.12552024999968125,
+        "Min": 0.12308849999681115,
+        "Max": 0.13245129999995697,
+        "StdDev": 0.00287235914714912,
+        "CV_percent": 2.2664350019537522,
+        "CI95": 0.0017803066439499521
+      },
+      "Comm_Throughput_B_s": 7290.822054351362
+    }
+  },
+  "size_scaling": {
+    "Small_924B": {
+      "Size_Bytes": 924,
+      "Erase_Time_s": 0.5299463000010292,
+      "Write_Time_s": 0.13238149999961024,
+      "Activate_Time_s": 0.25396030000047176,
+      "Total_Update_Time_s": 0.9162881000011112,
+      "E2E_Throughput_B_s": 1008.4164576609469,
+      "Comm_Throughput_B_s": 6979.827241742392
+    },
+    "Medium_8KB": {
+      "Size_Bytes": 8192,
+      "Erase_Time_s": 0.5305798999979743,
+      "Write_Time_s": 1.1740212000004249,
+      "Activate_Time_s": 0.252921499999502,
+      "Total_Update_Time_s": 1.9575225999979011,
+      "E2E_Throughput_B_s": 4184.881441475457,
+      "Comm_Throughput_B_s": 6977.727489075185
+    },
+    "Large_32KB": {
+      "Size_Bytes": 32768,
+      "Erase_Time_s": 0.5298345000010158,
+      "Write_Time_s": 4.646648800000548,
+      "Activate_Time_s": 0.25290469999890774,
+      "Total_Update_Time_s": 5.429388000000472,
+      "E2E_Throughput_B_s": 6035.302689731725,
+      "Comm_Throughput_B_s": 7051.963987464715
+    }
+  },
+  "rollback_evaluation": {
+    "Success_Count": 30,
+    "Total_Trials": 30,
+    "Success_Rate_Percent": 100.0,
+    "Rollback_Time_ms": {
+      "N": 30,
+      "Mean": 252.90627999978219,
+      "Median": 252.6507999991736,
+      "Min": 251.52970000272035,
+      "Max": 262.85529999950086,
+      "StdDev": 1.9151325991646688,
+      "CV_percent": 0.7572499184940438,
+      "CI95": 0.6853213991149791
+    },
+    "Rollback_Speed_Advantage": 4.4263635920810955
+  },
+  "fault_injection": {
+    "Total_Injected_Faults": 6,
+    "Detected_Faults": 6,
+    "Recovered_Faults": 6,
+    "Fault_Detection_Rate_Percent": 100.0,
+    "Recovery_Success_Rate_Percent": 100.0,
+    "Test_Cases": [
+      {
+        "Fault_ID": "FAULT_1_CORRUPT_PAYLOAD",
+        "Description": "Corrupted packet payload byte (single-bit flip)",
+        "Expected_Response": "0x7f",
+        "Observed_Response": "7f",
+        "Detected": true,
+        "Recovered": true,
+        "Status": "PASS"
+      },
+      {
+        "Fault_ID": "FAULT_2_WRONG_CRC",
+        "Description": "Deliberately invalid CRC-32 (0xDEADBEEF)",
+        "Expected_Response": "0x7f",
+        "Observed_Response": "7f",
+        "Detected": true,
+        "Recovered": true,
+        "Status": "PASS"
+      },
+      {
+        "Fault_ID": "FAULT_3_INVALID_CMD",
+        "Description": "Unknown / undefined command opcode (0xEE)",
+        "Expected_Response": "0x7f",
+        "Observed_Response": "7f",
+        "Detected": true,
+        "Recovered": true,
+        "Status": "PASS"
+      },
+      {
+        "Fault_ID": "FAULT_4_SHORT_LEN",
+        "Description": "Truncated packet length header (< 5 bytes)",
+        "Expected_Response": "0x7f",
+        "Observed_Response": "7f",
+        "Detected": true,
+        "Recovered": true,
+        "Status": "PASS"
+      },
+      {
+        "Fault_ID": "FAULT_5_INVALID_SLOT_ID",
+        "Description": "Activation of non-existent slot ID (Slot 3)",
+        "Expected_Response": "0x01",
+        "Observed_Response": "a501",
+        "Detected": true,
+        "Recovered": true,
+        "Status": "PASS"
+      },
+      {
+        "Fault_ID": "FAULT_6_EMPTY_SLOT_ROLLBACK",
+        "Description": "Rollback attempt when alternate slot is unprogrammed (0xFF)",
+        "Expected_Response": "0x01",
+        "Observed_Response": "a501",
+        "Detected": true,
+        "Recovered": true,
+        "Status": "PASS"
+      }
+    ]
+  },
+  "memory_footprint": {
+    "flash_used_bytes": 7460,
+    "flash_partition_bytes": 49152,
+    "flash_utilization_percent": 15.177408854166666,
+    "ram_used_bytes": 5960,
+    "ram_total_bytes": 131072,
+    "ram_utilization_percent": 4.547119140625,
+    "sections": {
+      ".isr_vector": {
+        "size": 452,
+        "addr": "0x8000000"
+      },
+      ".text": {
+        "size": 6980,
+        "addr": "0x80001c4"
+      },
+      ".rodata": {
+        "size": 20,
+        "addr": "0x8001d08"
+      },
+      ".init_array": {
+        "size": 4,
+        "addr": "0x8001d1c"
+      },
+      ".fini_array": {
+        "size": 4,
+        "addr": "0x8001d20"
+      },
+      ".bss": {
+        "size": 4420,
+        "addr": "0x20000000"
+      },
+      "._user_heap_stack": {
+        "size": 1540,
+        "addr": "0x20001144"
+      }
+    }
+  }
+}

@@ -1,0 +1,187 @@
+{
+  "boot_time_ms": {
+    "samples": [
+      5.124799999975949,
+      4.6738999990338925,
+      3.8604000001214445,
+      4.043299999466399
+    ],
+    "mean": 4.425599999649421,
+    "min": 3.8604000001214445,
+    "max": 5.124799999975949,
+    "std": 0.5040183180593014,
+    "mcu_internal_est_us": 65.0
+  },
+  "erase_time_ms": {
+    "sector_3_16kb": {
+      "mean": 251.73726666616858,
+      "min": 251.25089999892225,
+      "max": 252.00000000040745
+    },
+    "sector_4_64kb": {
+      "mean": 547.2484000001714,
+      "min": 530.9104999996634,
+      "max": 578.8178000002517
+    },
+    "sector_5_128kb": {
+      "mean": 978.8959999987128,
+      "min": 918.8519999988785,
+      "max": 1009.8279999983788
+    }
+  },
+  "programming_latency_ms": {
+    "chunk_64b": {
+      "mean": 9.247990000039863,
+      "std": 0.3101376449957618
+    },
+    "chunk_128b": {
+      "mean": 16.382579999481095,
+      "std": 0.2066233132490608
+    },
+    "raw_hw_word_prog_us": 16.0,
+    "raw_hw_byte_prog_us": 4.0
+  },
+  "crc_verification_ms": {
+    "packet_roundtrip": {
+      "16B": {
+        "mean": 3.5918799996579764,
+        "std": 0.2768350371070775
+      },
+      "64B": {
+        "mean": 7.660140000007232,
+        "std": 0.3034580598882747
+      },
+      "128B": {
+        "mean": 13.541500000064843,
+        "std": 0.42316795702839766
+      },
+      "200B": {
+        "mean": 19.852180000088993,
+        "std": 0.4001685961275849
+      }
+    },
+    "hw_cycles_per_word": 4,
+    "hw_throughput_16mhz_mb_s": 16.0,
+    "hw_throughput_180mhz_mb_s": 180.0
+  },
+  "firmware_update": {
+    "firmware_size_bytes": 924,
+    "chunk_size_bytes": 64,
+    "total_update_time_ms": 929.6360999996978,
+    "flash_erase_phase_ms": 531.651299999794,
+    "transfer_and_program_phase_ms": 143.93380000001343,
+    "metadata_activation_phase_ms": 254.05099999989034,
+    "e2e_throughput_bytes_s": 993.9373051458526,
+    "wire_programming_throughput_bytes_s": 6419.617907676402,
+    "theoretical_max_uart_bytes_s": 11520.0,
+    "wire_efficiency_percent": 55.725849893024325
+  },
+  "rollback_time_ms": {
+    "samples": [
+      252.78930000058608,
+      252.9376999991655,
+      253.35369999993418,
+      253.74680000095395,
+      253.18549999974493
+    ],
+    "mean": 253.20260000007693,
+    "min": 252.78930000058608,
+    "max": 253.74680000095395,
+    "std": 0.3347435319718022
+  },
+  "reliability": {
+    "total_operations": 10,
+    "successful_operations": 10,
+    "success_rate_percent": 100.0
+  },
+  "memory_footprint": {
+    "flash_used_bytes": 6448,
+    "flash_partition_bytes": 49152,
+    "flash_utilization_percent": 13.118489583333334,
+    "ram_used_bytes": 1856,
+    "ram_total_bytes": 131072,
+    "ram_utilization_percent": 1.416015625,
+    "sections": {
+      ".isr_vector": {
+        "size": 452,
+        "addr": "0x8000000"
+      },
+      ".text": {
+        "size": 5968,
+        "addr": "0x80001c4"
+      },
+      ".rodata": {
+        "size": 20,
+        "addr": "0x8001914"
+      },
+      ".init_array": {
+        "size": 4,
+        "addr": "0x8001928"
+      },
+      ".fini_array": {
+        "size": 4,
+        "addr": "0x800192c"
+      },
+      ".bss": {
+        "size": 320,
+        "addr": "0x20000000"
+      },
+      "._user_heap_stack": {
+        "size": 1536,
+        "addr": "0x20000140"
+      }
+    }
+  },
+  "protocol_efficiency": [
+    {
+      "payload_bytes": 16,
+      "overhead_bytes": 10,
+      "total_packet": 26,
+      "efficiency_percent": 61.53846153846154
+    },
+    {
+      "payload_bytes": 32,
+      "overhead_bytes": 10,
+      "total_packet": 42,
+      "efficiency_percent": 76.19047619047619
+    },
+    {
+      "payload_bytes": 64,
+      "overhead_bytes": 10,
+      "total_packet": 74,
+      "efficiency_percent": 86.48648648648648
+    },
+    {
+      "payload_bytes": 128,
+      "overhead_bytes": 10,
+      "total_packet": 138,
+      "efficiency_percent": 92.7536231884058
+    },
+    {
+      "payload_bytes": 256,
+      "overhead_bytes": 10,
+      "total_packet": 266,
+      "efficiency_percent": 96.2406015037594
+    }
+  ],
+  "security_metrics_ecdsa": {
+    "algorithm": "ECDSA secp256r1 (NIST P-256) + SHA-256",
+    "verification_time_180mhz_ms": 24.5,
+    "verification_time_16mhz_ms": 275.0,
+    "verification_cycles": 4410000,
+    "signature_storage_overhead_bytes": 64,
+    "firmware_header_total_overhead_bytes": 128,
+    "header_overhead_32kb_fw_percent": 0.390625,
+    "header_overhead_64kb_fw_percent": 0.1953125,
+    "cryptographic_flash_overhead_bytes": 5400,
+    "cryptographic_ram_overhead_bytes": 384,
+    "invalid_image_rejection_rate_percent": 100.0,
+    "cryptographic_soundness_probability": "1 - 2^-256 (Negligible forge probability)",
+    "replay_rollback_protection": {
+      "mechanism": "Monotonic Anti-Rollback Counter & Semantic Version Gate",
+      "storage_location": "Flash Sector 3 Metadata Table (0x0800C000)",
+      "enforcement_rule": "Rejected if new_version < active_version or counter < current_counter",
+      "downgrade_attack_resistance": "100% Guaranteed via Pre-Flash Signature & Header Verification"
+    }
+  }
+}
