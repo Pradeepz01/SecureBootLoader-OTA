@@ -1,22 +1,3 @@
-/*
- * ESP8266 Wireless OTA Gateway & Web Controller for STM32F446RE Secure Bootloader
- * 
- * Target Board: NodeMCU 1.0 (ESP-12E / ESP-12F), WeMos D1 Mini, or Generic ESP8266
- * Target Microcontroller: STM32F446RE (Bare-Metal Secure Bootloader via USART2)
- *
- * Default Pin Connections (SoftwareSerial on D6 & D5):
- *   ESP8266 D5 (GPIO 14, TX) ---> STM32 PA3 (USART2 RX)
- *   ESP8266 D6 (GPIO 12, RX) ---> STM32 PA2 (USART2 TX)
- *   ESP8266 GND              ---> STM32 GND (Mandatory Common Ground)
- *   ESP8266 VIN / 5V         ---> 5V Power Supply or USB
- *
- * (Note: USB Serial remains active at 115200 baud for Serial Monitor debugging!)
- *
- * Web Portal:
- *   SoftAP: "ESP8266-SecureBoot-OTA" (Password: "secureboot123")
- *   IP: http://192.168.4.1 (or mDNS: http://esp8266-ota.local)
- */
-
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
@@ -26,25 +7,15 @@
 const char* AP_SSID = "ESP8266-SecureBoot-OTA";
 const char* AP_PASS = "secureboot123";
 
-// Optional Station Wi-Fi (Home / Lab Router)
-const char* STA_SSID = "YOUR_WIFI_SSID";
-const char* STA_PASS = "YOUR_WIFI_PASS";
-
-// UART Communication Mode:
-// 1 = SoftwareSerial on D6 (RX) / D5 (TX) — Allows Serial Monitor on USB simultaneously!
-// 0 = Hardware Serial on standard RX (GPIO 3) / TX (GPIO 1)
-#define USE_SOFTWARE_SERIAL 1
-
-#if USE_SOFTWARE_SERIAL
-  #define STM32_RX_PIN 12 // D6 on NodeMCU -> Connects to STM32 PA2 (TX)
-  #define STM32_TX_PIN 14 // D5 on NodeMCU -> Connects to STM32 PA3 (RX)
-  SoftwareSerial stm32Serial(STM32_RX_PIN, STM32_TX_PIN);
-  #define STM32_PORT stm32Serial
-#else
-  #define STM32_PORT Serial
-#endif
+// Station Wi-Fi (Laptop Hotspot)
+const char* STA_SSID = "PRADEEP";
+const char* STA_PASS = "12345678";
 
 #define STM32_BAUD 115200
+
+// SoftwareSerial instance
+SoftwareSerial stm32Serial;
+#define STM32_PORT stm32Serial
 
 // Protocol Status Codes
 #define BL_ACK  0xA5
@@ -105,11 +76,13 @@ uint32_t calc_stm32_crc(const uint8_t *data, size_t len) {
 // -------------------------------------------------------------
 // Low-Level STM32 Packet Transmission & Reception
 // -------------------------------------------------------------
-bool send_stm32_cmd(const uint8_t *payload, size_t payload_len, uint8_t *resp_buf, size_t expected_resp_len, uint32_t timeout_ms = 1000) {
+bool send_stm32_cmd(const uint8_t *payload, size_t payload_len, uint8_t *resp_buf, size_t expected_resp_len, uint32_t timeout_ms = 800) {
   while (STM32_PORT.available()) STM32_PORT.read(); // Flush buffer
 
   uint32_t crc = calc_stm32_crc(payload, payload_len);
   uint8_t pkt_len = payload_len + 4; // payload + 4B CRC
+
+  Serial.printf("  [UART_TX] cmd=0x%02X (%uB)... ", payload[0], pkt_len);
 
   STM32_PORT.write(pkt_len);
   STM32_PORT.write(payload, payload_len);
@@ -128,6 +101,17 @@ bool send_stm32_cmd(const uint8_t *payload, size_t payload_len, uint8_t *resp_bu
       delay(1);
     }
   }
+
+  Serial.printf("Rx: %u/%uB", (unsigned int)bytes_read, (unsigned int)expected_resp_len);
+  if (bytes_read > 0) {
+    Serial.print(" [");
+    for (size_t i = 0; i < bytes_read; i++) {
+      Serial.printf("%02X ", resp_buf[i]);
+    }
+    Serial.print("]");
+  }
+  Serial.println();
+
   return (bytes_read == expected_resp_len);
 }
 
@@ -135,7 +119,7 @@ bool send_stm32_cmd(const uint8_t *payload, size_t payload_len, uint8_t *resp_bu
 bool query_bl_version() {
   uint8_t cmd[1] = { BL_GET_VERSION };
   uint8_t resp[4]; // [ACK (0xA5)] [Major] [Minor] [Patch]
-  if (send_stm32_cmd(cmd, 1, resp, 4, 300)) {
+  if (send_stm32_cmd(cmd, 1, resp, 4, 400)) {
     if (resp[0] == BL_ACK) {
       g_bl_version[0] = resp[1];
       g_bl_version[1] = resp[2];
@@ -176,21 +160,20 @@ bool query_slot_info() {
 bool erase_sector(uint8_t sector) {
   uint8_t cmd[3] = { BL_FLASH_ERASE, sector, 1 };
   uint8_t resp[2]; // [ACK] [Status]
-  // Sector 4 takes ~533ms, Sector 5 takes ~924ms; timeout 2500ms
   if (send_stm32_cmd(cmd, 3, resp, 2, 2500)) {
     return (resp[0] == BL_ACK && resp[1] == 0x00);
   }
   return false;
 }
 
-// Program 1 Chunk (Opcode 0x53)
-bool write_flash_chunk(uint32_t addr, const uint8_t *data, size_t len) {
-  uint8_t payload[5 + len];
+// Program Memory Chunk (Opcode 0x53)
+bool write_flash_chunk(uint32_t address, const uint8_t *data, size_t len) {
+  uint8_t payload[5 + 128];
   payload[0] = BL_MEM_WRITE;
-  payload[1] = (uint8_t)(addr & 0xFF);
-  payload[2] = (uint8_t)((addr >> 8) & 0xFF);
-  payload[3] = (uint8_t)((addr >> 16) & 0xFF);
-  payload[4] = (uint8_t)((addr >> 24) & 0xFF);
+  payload[1] = (uint8_t)(address & 0xFF);
+  payload[2] = (uint8_t)((address >> 8) & 0xFF);
+  payload[3] = (uint8_t)((address >> 16) & 0xFF);
+  payload[4] = (uint8_t)((address >> 24) & 0xFF);
   memcpy(&payload[5], data, len);
 
   uint8_t resp[2];
@@ -211,26 +194,26 @@ bool activate_slot(uint8_t slot, uint32_t version) {
   cmd[5] = (uint8_t)((version >> 24) & 0xFF);
 
   uint8_t resp[2];
-  if (send_stm32_cmd(cmd, 6, resp, 2, 1200)) {
+  if (send_stm32_cmd(cmd, 6, resp, 2, 1000)) {
     return (resp[0] == BL_ACK && resp[1] == 0x00);
   }
   return false;
 }
 
-// Instant Rollback (Opcode 0x57)
+// Execute Instant Rollback (Opcode 0x57)
 bool execute_rollback(uint8_t &target_slot) {
   uint8_t cmd[1] = { BL_ROLLBACK };
-  uint8_t resp[3]; // [ACK] [Status] [TargetSlot]
-  if (send_stm32_cmd(cmd, 1, resp, 3, 1200)) {
-    if (resp[0] == BL_ACK && resp[1] == 0x00) {
-      target_slot = resp[2];
+  uint8_t resp[3];
+  if (send_stm32_cmd(cmd, 1, resp, 3, 1000)) {
+    if (resp[0] == BL_ACK && resp[2] == 0x00) {
+      target_slot = resp[1];
       return true;
     }
   }
   return false;
 }
 
-// Jump to Application (Opcode 0x54)
+// Jump to Application (Opcode 0x55)
 bool jump_to_application() {
   uint8_t cmd[1] = { BL_JUMP_APP };
   uint8_t resp[2];
@@ -241,7 +224,7 @@ bool jump_to_application() {
 }
 
 // -------------------------------------------------------------
-// Glassy Dashboard HTML UI (Stored in Flash PROGMEM)
+// Glassy Web UI
 // -------------------------------------------------------------
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -249,105 +232,100 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>STM32 Secure Bootloader — ESP8266 OTA Gateway</title>
+<title>STM32 Secure Bootloader — Wireless OTA</title>
 <style>
   :root {
-    --bg: #0a0e17;
-    --card-bg: rgba(255, 255, 255, 0.05);
+    --bg: #0b0f19;
+    --card-bg: rgba(22, 27, 34, 0.7);
     --border: rgba(255, 255, 255, 0.12);
-    --accent: #00f2fe;
-    --accent-glow: rgba(0, 242, 254, 0.35);
-    --success: #00ff87;
+    --primary: #00ff87;
+    --accent: #60efff;
     --danger: #ff0055;
-    --text: #e2e8f0;
-    --text-muted: #94a3b8;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
   }
+
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  body {
-    background: radial-gradient(circle at 50% 0%, #151f33 0%, var(--bg) 80%);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 20px;
-    display: flex;
-    justify-content: center;
-  }
-  .container { max-width: 860px; width: 100%; display: flex; flex-direction: column; gap: 18px; }
+  body { background: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; }
+  .container { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 16px; }
+
   .glass-card {
     background: var(--card-bg);
     backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 20px;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
   }
-  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
-  .header h1 { font-size: 19px; font-weight: 700; color: #fff; }
+
+  .header { display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 18px; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
   .status-badge {
-    padding: 4px 12px;
+    padding: 4px 10px;
     border-radius: 20px;
     font-size: 11px;
     font-weight: 600;
-    text-transform: uppercase;
   }
-  .status-online { background: rgba(0, 255, 135, 0.15); color: var(--success); border: 1px solid var(--success); }
+  .status-online { background: rgba(0, 255, 135, 0.15); color: var(--primary); border: 1px solid var(--primary); }
   .status-offline { background: rgba(255, 0, 85, 0.15); color: var(--danger); border: 1px solid var(--danger); }
-  
-  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
   .slot-card {
-    background: rgba(0, 0, 0, 0.28);
+    background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px;
+    border-radius: 10px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 6px;
   }
-  .slot-card.active { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
-  .slot-card .title { font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; }
-  .slot-card .version { font-size: 19px; font-weight: bold; color: #fff; }
+  .slot-card.active { border-color: var(--primary); box-shadow: 0 0 10px rgba(0, 255, 135, 0.2); }
+  .slot-card .title { font-size: 12px; font-weight: 600; color: var(--text-muted); display: flex; justify-content: space-between; }
+  .slot-card .version { font-size: 16px; font-weight: 700; color: #fff; }
   .slot-card .addr { font-size: 11px; font-family: monospace; color: var(--accent); }
 
   .upload-area {
     border: 2px dashed var(--border);
-    border-radius: 12px;
-    padding: 26px;
+    border-radius: 10px;
+    padding: 24px 16px;
     text-align: center;
     cursor: pointer;
+    background: rgba(255, 255, 255, 0.02);
     transition: all 0.2s ease;
   }
-  .upload-area:hover { border-color: var(--accent); background: rgba(0, 242, 254, 0.03); }
+  .upload-area:hover { border-color: var(--accent); background: rgba(96, 239, 255, 0.05); }
   .upload-area input { display: none; }
-  
-  .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+
+  .progress-container {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 12px 0 6px 0;
+    display: none;
+  }
+  .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.1s linear; }
+
+  .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
   button {
-    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
-    border: none;
+    flex: 1;
+    min-width: 130px;
+    padding: 10px 14px;
     border-radius: 8px;
-    padding: 11px 18px;
-    color: #0a0e17;
-    font-weight: 700;
+    border: none;
+    font-weight: 600;
     font-size: 12px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 15px rgba(0, 242, 254, 0.25);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: #000;
+    transition: transform 0.1s ease, filter 0.2s ease;
   }
-  button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 242, 254, 0.4); }
-  button.btn-danger {
-    background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%);
-    box-shadow: 0 4px 15px rgba(255, 8, 68, 0.25);
-    color: #fff;
-  }
-  button.btn-secondary {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text);
-    border: 1px solid var(--border);
-    box-shadow: none;
-  }
+  button:hover { filter: brightness(1.1); transform: translateY(-1px); }
   button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-  .progress-container { width: 100%; background: rgba(0,0,0,0.4); height: 7px; border-radius: 4px; overflow: hidden; display: none; margin-top: 10px; }
-  .progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #00ff87, #00f2fe); transition: width 0.1s ease; }
+  button.btn-danger { background: var(--danger); color: #fff; }
+  button.btn-secondary { background: rgba(255, 255, 255, 0.1); color: var(--text); border: 1px solid var(--border); }
 
   .log-console {
     background: #000;
@@ -451,32 +429,35 @@ async function refreshStatus() {
     }
 
     if (data.slots && data.slots.valid) {
-      const s1Card = document.getElementById('card-slot1');
-      const s2Card = document.getElementById('card-slot2');
-      const s1Active = data.slots.active_slot === 1;
+      const s = data.slots;
+      document.getElementById('ver-slot1').textContent = formatVersion(s.slot1_version);
+      document.getElementById('ver-slot2').textContent = formatVersion(s.slot2_version);
 
-      s1Card.className = 'slot-card ' + (s1Active ? 'active' : '');
-      s2Card.className = 'slot-card ' + (!s1Active ? 'active' : '');
+      const c1 = document.getElementById('card-slot1');
+      const c2 = document.getElementById('card-slot2');
+      const b1 = document.getElementById('badge-slot1');
+      const b2 = document.getElementById('badge-slot2');
 
-      document.getElementById('badge-slot1').textContent = s1Active ? 'ACTIVE' : 'STANDBY';
-      document.getElementById('badge-slot2').textContent = !s1Active ? 'ACTIVE' : 'STANDBY';
+      c1.className = 'slot-card' + (s.active_slot === 1 ? ' active' : '');
+      c2.className = 'slot-card' + (s.active_slot === 2 ? ' active' : '');
+      b1.textContent = (s.active_slot === 1) ? 'ACTIVE' : (s.oldest_slot === 1 ? 'OLDEST (NEXT)' : 'BACKUP');
+      b2.textContent = (s.active_slot === 2) ? 'ACTIVE' : (s.oldest_slot === 2 ? 'OLDEST (NEXT)' : 'BACKUP');
 
-      document.getElementById('ver-slot1').textContent = formatVersion(data.slots.slot1_version);
-      document.getElementById('ver-slot2').textContent = formatVersion(data.slots.slot2_version);
-
-      document.getElementById('file-label').textContent = `Target Slot: Slot ${data.slots.oldest_slot} (Auto)`;
+      const targetText = s.oldest_slot === 1 ? 'Slot 1 (Sector 4 @ 0x08010000)' : 'Slot 2 (Sector 5 @ 0x08020000)';
+      document.getElementById('file-label').textContent = `Target for Next Upload: ${targetText}`;
     }
-  } catch (err) {
-    log('Status fetch error: ' + err);
+  } catch (e) {
+    document.getElementById('conn-badge').className = 'status-badge status-offline';
+    document.getElementById('conn-badge').textContent = 'Gateway Offline';
   }
 }
 
 function handleFileSelected(input) {
-  if (input.files && input.files[0]) {
+  if (input.files.length > 0) {
     selectedFile = input.files[0];
-    document.getElementById('file-label').textContent = `Selected: ${selectedFile.name} (${selectedFile.size} bytes)`;
+    document.getElementById('drop-zone').querySelector('p').textContent = `Selected: ${selectedFile.name} (${selectedFile.size} B)`;
     document.getElementById('btn-upload').disabled = false;
-    log(`Firmware loaded: ${selectedFile.name} (${selectedFile.size} bytes)`);
+    log(`File selected: ${selectedFile.name}`);
   }
 }
 
@@ -484,11 +465,14 @@ function startUpload() {
   if (!selectedFile) return;
 
   const btn = document.getElementById('btn-upload');
-  btn.disabled = true;
-  document.getElementById('prog-wrap').style.display = 'block';
+  const progWrap = document.getElementById('prog-wrap');
   const progBar = document.getElementById('prog-bar');
 
-  log('Starting wireless OTA upload to ESP8266...');
+  btn.disabled = true;
+  progWrap.style.display = 'block';
+  progBar.style.width = '0%';
+
+  log(`Initiating OTA Stream: ${selectedFile.name}...`);
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/upload', true);
@@ -497,23 +481,25 @@ function startUpload() {
     if (e.lengthComputable) {
       const pct = Math.round((e.loaded / e.total) * 100);
       progBar.style.width = pct + '%';
+      if (pct % 25 === 0) log(`Streaming Progress: ${pct}%`);
     }
   };
 
   xhr.onload = function() {
-    if (xhr.status === 200) {
-      log('OTA Update Complete! Written & Verified on STM32.');
-      progBar.style.width = '100%';
-      setTimeout(refreshStatus, 1000);
-    } else {
-      log('OTA Failed: ' + xhr.responseText);
-    }
+    progWrap.style.display = 'none';
     btn.disabled = false;
+    if (xhr.status === 200) {
+      log('OTA Update Successful! Slot programmed and verified with Hardware CRC.');
+      setTimeout(refreshStatus, 800);
+    } else {
+      log('OTA Update Failed: ' + xhr.responseText);
+    }
   };
 
   xhr.onerror = function() {
-    log('Network error during upload.');
+    progWrap.style.display = 'none';
     btn.disabled = false;
+    log('Network error occurred during OTA upload.');
   };
 
   const formData = new FormData();
@@ -539,7 +525,7 @@ async function triggerRollback() {
 }
 
 async function jumpApplication() {
-  log('Issuing BL_JUMP_APP (0x54)...');
+  log('Issuing BL_JUMP_APP (0x55)...');
   try {
     const res = await fetch('/api/jump', { method: 'POST' });
     const j = await res.json();
@@ -550,8 +536,7 @@ async function jumpApplication() {
 }
 
 refreshStatus();
-setInterval(refreshStatus, 4000);
-log('ESP8266 Gateway initialized. Listening on SoftwareSerial (D6/D5 @ 115200).');
+setInterval(refreshStatus, 3000);
 </script>
 </body>
 </html>
@@ -676,45 +661,50 @@ void handleUploadResponse() {
   if (s_upload_ok) {
     server.send(200, "application/json", "{\"success\":true,\"bytes\":" + String(s_bytes_written) + "}");
   } else {
-    server.send(500, "application/json", "{\"success\":false,\"message\":\"Flash write or CRC error\"}");
+    server.send(500, "application/json", "{\"success\":false,\"message\":\"OTA flash failed\"}");
   }
 }
 
 // -------------------------------------------------------------
-// Arduino Setup & Loop
+// Arduino Entrypoints
 // -------------------------------------------------------------
 void setup() {
-  // USB Serial Monitor Debugging
+  system_update_cpu_freq(160);
   Serial.begin(115200);
   delay(100);
 
-  // Initialize UART to STM32
-#if USE_SOFTWARE_SERIAL
-  stm32Serial.begin(STM32_BAUD);
-  Serial.println("\n[INIT] SoftwareSerial active on D6 (RX) / D5 (TX) @ 115200 baud.");
-#else
-  Serial.begin(STM32_BAUD);
-#endif
+  // Initialize SoftwareSerial with default Config (D5=TX, D6=RX)
+  stm32Serial.begin(STM32_BAUD, SWSERIAL_8N1, 12, 14);
 
+  Serial.println("\n=============================================");
+  Serial.println("⚡ STM32 OTA Gateway on ESP8266 (Auto-Probing)");
   Serial.println("=============================================");
-  Serial.println("STM32 OTA Gateway on ESP8266 Started");
 
-  // Start Access Point
+  // Start Wi-Fi in dual AP + STA mode
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(AP_SSID, AP_PASS);
-  Serial.printf("Access Point Started: SSID='%s', Pass='%s'\n", AP_SSID, AP_PASS);
-  Serial.print("AP IP Address: ");
-  Serial.println(WiFi.softAPIP());
 
-  // Connect to STA Wi-Fi if configured
-  if (String(STA_SSID) != "YOUR_WIFI_SSID") {
-    WiFi.begin(STA_SSID, STA_PASS);
-    Serial.printf("Connecting to %s...", STA_SSID);
+  // Connect to Laptop Hotspot
+  Serial.printf("Connecting to Laptop Hotspot '%s'...\n", STA_SSID);
+  WiFi.begin(STA_SSID, STA_PASS);
+  uint32_t t0 = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 6000) {
+    delay(400);
+    Serial.print(".");
+  }
+  Serial.println();
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print("[WIFI] Connected! Hotspot URL: http://");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("[WIFI] Hotspot not yet connected (retrying in background).");
   }
 
   // Setup mDNS
   if (MDNS.begin("esp8266-ota")) {
-    Serial.println("mDNS responder started: http://esp8266-ota.local");
+    MDNS.addService("http", "tcp", 80);
+    Serial.println("[mDNS] http://esp8266-ota.local");
   }
 
   // Register Web Routes
@@ -725,16 +715,39 @@ void setup() {
   server.on("/api/upload", HTTP_POST, handleUploadResponse, handleFileUpload);
 
   server.begin();
-  Serial.println("HTTP Web Server Started on Port 80");
-  Serial.println("Open http://192.168.4.1 in your browser.");
+  Serial.println("[HTTP] Server ready on Port 80");
+  Serial.print("[HTTP] Hotspot URL: http://");
+  Serial.println(WiFi.localIP());
+  Serial.print("[HTTP] AP URL:      http://");
+  Serial.println(WiFi.softAPIP());
   Serial.println("=============================================\n");
-
-  query_bl_version();
-  query_slot_info();
 }
+
+static uint32_t s_last_probe = 0;
+static uint8_t s_pin_mode = 0;
 
 void loop() {
   server.handleClient();
   MDNS.update();
+
+  if (!g_bl_connected && millis() - s_last_probe > 2000) {
+    s_last_probe = millis();
+    if (s_pin_mode == 0) {
+      Serial.println("[PROBE 1/2] Mode 0: ESP TX=D5 (GPIO14) -> STM32 D0, RX=D6 (GPIO12) <- STM32 D1...");
+      stm32Serial.begin(STM32_BAUD, SWSERIAL_8N1, 12, 14);
+      s_pin_mode = 1;
+    } else {
+      Serial.println("[PROBE 2/2] Mode 1 (SWAPPED): ESP TX=D6 (GPIO12) -> STM32 D1, RX=D5 (GPIO14) <- STM32 D0...");
+      stm32Serial.begin(STM32_BAUD, SWSERIAL_8N1, 14, 12);
+      s_pin_mode = 0;
+    }
+
+    if (query_bl_version()) {
+      Serial.printf("[PROBE] >>> SUCCESS! CONNECTED TO STM32 (v%u.%u.%u)! <<<\n",
+                    g_bl_version[0], g_bl_version[1], g_bl_version[2]);
+      query_slot_info();
+    }
+  }
+
   delay(2);
 }

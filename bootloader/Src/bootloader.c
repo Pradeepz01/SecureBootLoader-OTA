@@ -11,18 +11,18 @@ static inline void Bootloader_SetMSP(uint32_t stack_address)
 }
 
 static uint8_t bl_rx_buffer[BL_MAX_PACKET_LENGTH];
-
+static USART_RegDef_t *g_bl_usart = USART2;
 
 void Bootloader_SendACK(void)
 {
     uint8_t ack = 0xA5;
-    USART_SendData(USART2, &ack, 1);
+    USART_SendData(g_bl_usart, &ack, 1);
 }
 
 void Bootloader_SendNACK(void)
 {
     uint8_t nack = 0x7F;
-    USART_SendData(USART2, &nack, 1);
+    USART_SendData(g_bl_usart, &nack, 1);
 }
 
 void Bootloader_HandleGetVersion(void)
@@ -35,7 +35,7 @@ void Bootloader_HandleGetVersion(void)
 
     Bootloader_SendACK();
 
-    USART_SendData(USART2, version, 3);
+    USART_SendData(g_bl_usart, version, 3);
 }
 void Bootloader_HandleMemWrite(uint8_t packet_length)
 {
@@ -64,7 +64,7 @@ void Bootloader_HandleMemWrite(uint8_t packet_length)
 
     Bootloader_SendACK();
 
-    USART_SendData(USART2, &status, 1);
+    USART_SendData(g_bl_usart, &status, 1);
 }
 
 static Bootloader_SlotTable_t g_slot_table;
@@ -165,12 +165,12 @@ void Bootloader_HandleJumpApp(void)
     {
         status = 0x01; /* Invalid app in both slots */
         Bootloader_SendACK();
-        USART_SendData(USART2, &status, 1);
+        USART_SendData(g_bl_usart, &status, 1);
         return;
     }
 
     Bootloader_SendACK();
-    USART_SendData(USART2, &status, 1);
+    USART_SendData(g_bl_usart, &status, 1);
 
     /* Delay to ensure UART transmission finishes */
     for (volatile uint32_t i = 0; i < 50000; i++);
@@ -203,7 +203,28 @@ void Bootloader_HandleVerifyCRC(uint8_t packet_length)
     response[3] = (uint8_t)((calculated_crc >> 24) & 0xFF);
     response[4] = (calculated_crc == crc_host) ? 0x00 : 0x01;
 
-    USART_SendData(USART2, response, 5);
+    USART_SendData(g_bl_usart, response, 5);
+}
+
+static uint8_t Bootloader_ReceiveByte(USART_RegDef_t *pUSARTx, uint8_t *pByte, uint32_t timeout_loops)
+{
+    while (timeout_loops--)
+    {
+        /* Clear ORE / FE / NF if set */
+        if (pUSARTx->SR & ((1U << USART_SR_ORE) | (1U << USART_SR_FE) | (1U << USART_SR_NF)))
+        {
+            volatile uint32_t dummy = pUSARTx->SR;
+            dummy = pUSARTx->DR;
+            (void)dummy;
+        }
+
+        if (pUSARTx->SR & (1U << USART_SR_RXNE))
+        {
+            *pByte = (uint8_t)(pUSARTx->DR & 0xFF);
+            return 1;
+        }
+    }
+    return 0; /* Timeout */
 }
 
 void Bootloader_ReadCommand(void)
@@ -211,11 +232,51 @@ void Bootloader_ReadCommand(void)
     uint8_t packet_length;
     uint8_t command;
 
-    /* Receive packet length */
-    USART_ReceiveData(USART2, &packet_length, 1);
+    /* Wait for incoming packet on either USART2 (ST-LINK) or USART1 (ESP8266) */
+    while (1)
+    {
+        /* Clear any error flags that would block RXNE */
+        if (USART1->SR & ((1U << USART_SR_ORE) | (1U << USART_SR_FE) | (1U << USART_SR_NF)))
+        {
+            volatile uint32_t dummy = USART1->SR;
+            dummy = USART1->DR;
+            (void)dummy;
+        }
+        if (USART2->SR & ((1U << USART_SR_ORE) | (1U << USART_SR_FE) | (1U << USART_SR_NF)))
+        {
+            volatile uint32_t dummy = USART2->SR;
+            dummy = USART2->DR;
+            (void)dummy;
+        }
 
-    /* Receive remaining packet */
-    USART_ReceiveData(USART2, bl_rx_buffer, packet_length);
+        if (USART_GetFlagStatus(USART2, USART_FLAG_RXNE) == FLAG_SET)
+        {
+            g_bl_usart = USART2;
+            break;
+        }
+        if (USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == FLAG_SET)
+        {
+            g_bl_usart = USART1;
+            break;
+        }
+    }
+
+    /* Receive packet length with timeout */
+    if (!Bootloader_ReceiveByte(g_bl_usart, &packet_length, 1000000))
+    {
+        Bootloader_SendNACK();
+        return;
+    }
+
+    /* Receive remaining packet bytes with timeout */
+    for (uint32_t i = 0; i < packet_length; i++)
+    {
+        if (!Bootloader_ReceiveByte(g_bl_usart, &bl_rx_buffer[i], 1000000))
+        {
+            Bootloader_SendNACK();
+            return;
+        }
+    }
 
     /* A valid packet must contain at least 1 byte command + 4 bytes CRC */
     if (packet_length < 5)
@@ -338,7 +399,7 @@ void Bootloader_HandleGetSlotInfo(void)
     resp[16] = oldest_slot;
     resp[17] = rollback_possible;
 
-    USART_SendData(USART2, resp, 18);
+    USART_SendData(g_bl_usart, resp, 18);
 }
 
 void Bootloader_HandleActivateSlot(uint8_t packet_length)
@@ -380,7 +441,7 @@ void Bootloader_HandleActivateSlot(uint8_t packet_length)
     }
 
     Bootloader_SendACK();
-    USART_SendData(USART2, &status, 1);
+    USART_SendData(g_bl_usart, &status, 1);
 }
 
 void Bootloader_HandleRollback(void)
@@ -410,7 +471,7 @@ void Bootloader_HandleRollback(void)
     {
         status = 0x01; /* Rollback not possible */
         Bootloader_SendACK();
-        USART_SendData(USART2, &status, 1);
+        USART_SendData(g_bl_usart, &status, 1);
         return;
     }
 
@@ -423,7 +484,7 @@ void Bootloader_HandleRollback(void)
     uint8_t resp[2];
     resp[0] = 0x00; /* Success */
     resp[1] = target_slot;
-    USART_SendData(USART2, resp, 2);
+    USART_SendData(g_bl_usart, resp, 2);
 
     for (volatile uint32_t i = 0; i < 50000; i++);
     Bootloader_JumpToApplication();
@@ -477,7 +538,7 @@ void Bootloader_HandleFlashErase(void)
 
     Bootloader_SendACK();
 
-    USART_SendData(USART2, &status, 1);
+    USART_SendData(g_bl_usart, &status, 1);
 }
 
 
@@ -492,9 +553,10 @@ void Bootloader_JumpToApplication(void)
     uint32_t app_stack_pointer = *((volatile uint32_t *)app_base);
     uint32_t app_reset_handler = *((volatile uint32_t *)(app_base + 4U));
 
-    /* Turn off LED PA5 and disable USART2 peripheral clock before jump */
+    /* Turn off LED PA5 and disable USART peripheral clocks before jump */
     GPIO_WriteToOutputPin(GPIOA, GPIO_PIN_NO_5, 0);
     USART2_PCLK_DI();
+    USART1_PCLK_DI();
 
     /* Redirect interrupts to the active application's vector table */
     SCB_VTOR = app_base;
@@ -526,16 +588,16 @@ void Bootloader_HandleSetBaud(uint8_t packet_length)
 
     Bootloader_SendACK();
     uint8_t status = 0x00;
-    USART_SendData(USART2, &status, 1);
+    USART_SendData(g_bl_usart, &status, 1);
 
     /* Wait until transmission complete (TC=1) before changing BRR */
-    while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == FLAG_RESET);
+    while (USART_GetFlagStatus(g_bl_usart, USART_FLAG_TC) == FLAG_RESET);
 
     /* Short stabilization delay */
     for (volatile uint32_t i = 0; i < 5000; i++);
 
     /* Reconfigure baud rate */
-    USART_SetBaudRate(USART2, baud);
+    USART_SetBaudRate(g_bl_usart, baud);
 }
 
 void Bootloader_HandleBenchmarkHW(uint8_t packet_length)
@@ -556,7 +618,7 @@ void Bootloader_HandleBenchmarkHW(uint8_t packet_length)
         resp[6] = (uint8_t)((clk >> 8) & 0xFF);
         resp[7] = (uint8_t)((clk >> 16) & 0xFF);
         resp[8] = (uint8_t)((clk >> 24) & 0xFF);
-        USART_SendData(USART2, resp, 9);
+        USART_SendData(g_bl_usart, resp, 9);
     }
     else if (subcmd == 0x02) /* Subcmd 2: Pure Flash Word / Chunk Programming Benchmark */
     {
@@ -586,7 +648,7 @@ void Bootloader_HandleBenchmarkHW(uint8_t packet_length)
         resp[6] = (uint8_t)((bytes_prog >> 8) & 0xFF);
         resp[7] = (uint8_t)((bytes_prog >> 16) & 0xFF);
         resp[8] = (uint8_t)((bytes_prog >> 24) & 0xFF);
-        USART_SendData(USART2, resp, 9);
+        USART_SendData(g_bl_usart, resp, 9);
     }
     else if (subcmd == 0x03) /* Subcmd 3: Pure Hardware CRC-32 Execution Benchmark */
     {
@@ -618,7 +680,7 @@ void Bootloader_HandleBenchmarkHW(uint8_t packet_length)
         resp[10] = (uint8_t)((req_size >> 8) & 0xFF);
         resp[11] = (uint8_t)((req_size >> 16) & 0xFF);
         resp[12] = (uint8_t)((req_size >> 24) & 0xFF);
-        USART_SendData(USART2, resp, 13);
+        USART_SendData(g_bl_usart, resp, 13);
     }
     else if (subcmd == 0x04) /* Subcmd 4: Pure Flash Erase Benchmark */
     {
@@ -636,7 +698,7 @@ void Bootloader_HandleBenchmarkHW(uint8_t packet_length)
         resp[2] = (uint8_t)((t_elapsed >> 8) & 0xFF);
         resp[3] = (uint8_t)((t_elapsed >> 16) & 0xFF);
         resp[4] = (uint8_t)((t_elapsed >> 24) & 0xFF);
-        USART_SendData(USART2, resp, 5);
+        USART_SendData(g_bl_usart, resp, 5);
     }
     else
     {

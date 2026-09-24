@@ -61,6 +61,23 @@ int main(void)
     USART2Handle.USART_Config.USART_ParityControl = USART_PARITY_DISABLE;
 
 	USART_Init(&USART2Handle);
+
+    /* Initialize USART1 on PA9 (TX -> D8) and PA10 (RX -> D2) for wireless gateway */
+    USARTPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_9;
+    GPIO_Init(&USARTPins);
+
+    USARTPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_10;
+    GPIO_Init(&USARTPins);
+
+    USART_Handle_t USART1Handle;
+    USART1Handle.pUSARTx = USART1;
+    USART1Handle.USART_Config.USART_Baud = USART_STD_BAUD_115200;
+    USART1Handle.USART_Config.USART_Mode = USART_MODE_TXRX;
+    USART1Handle.USART_Config.USART_NoOfStopBits = USART_STOPBITS_1;
+    USART1Handle.USART_Config.USART_WordLength = USART_WORDLEN_8BITS;
+    USART1Handle.USART_Config.USART_ParityControl = USART_PARITY_DISABLE;
+
+    USART_Init(&USART1Handle);
 	/*
 	#define TEST_FLASH_ADDRESS    0x08010000U
 
