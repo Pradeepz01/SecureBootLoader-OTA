@@ -30,6 +30,7 @@
 #define BL_ACTIVATE_SLOT       0x58
 #define BL_SET_BAUD            0x59
 #define BL_BENCHMARK_HW        0x5A
+#define BL_RESET_MCU           0x5B
 
 #define DEMCR                  (*(volatile uint32_t *)0xE000EDFCU)
 #define DWT_CTRL               (*(volatile uint32_t *)0xE0001000U)
@@ -78,6 +79,7 @@ void Bootloader_HandleRollback(void);
 void Bootloader_HandleActivateSlot(uint8_t packet_length);
 void Bootloader_HandleSetBaud(uint8_t packet_length);
 void Bootloader_HandleBenchmarkHW(uint8_t packet_length);
+void Bootloader_HandleResetMCU(void);
 
 void Bootloader_SendACK(void);
 void Bootloader_SendNACK(void);

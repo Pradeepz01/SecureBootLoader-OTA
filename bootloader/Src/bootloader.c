@@ -345,10 +345,25 @@ void Bootloader_ReadCommand(void)
             Bootloader_HandleBenchmarkHW(packet_length);
             break;
 
+        case BL_RESET_MCU:
+            Bootloader_HandleResetMCU();
+            break;
+
         default:
             Bootloader_SendNACK();
             break;
     }
+}
+
+void Bootloader_HandleResetMCU(void)
+{
+    Bootloader_SendACK();
+    for (volatile uint32_t i = 0; i < 200000; i++); /* Allow UART TX buffer to flush */
+    #define SCB_AIRCR (*(volatile uint32_t *)0xE000ED0CU)
+    __asm volatile ("dsb");
+    SCB_AIRCR = (0x5FAUL << 16U) | (1U << 2U);
+    __asm volatile ("isb");
+    while (1);
 }
 
 void Bootloader_HandleGetSlotInfo(void)

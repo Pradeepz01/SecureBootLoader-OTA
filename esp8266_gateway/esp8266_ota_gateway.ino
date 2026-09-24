@@ -30,6 +30,10 @@ SoftwareSerial stm32Serial;
 #define BL_GET_SLOT_INFO 0x56
 #define BL_ROLLBACK      0x57
 #define BL_ACTIVATE_SLOT 0x58
+#define BL_RESET_MCU     0x5B
+
+// STM32 Hardware Reset Pin (D1 / GPIO 5 connects to STM32 NRST)
+#define STM32_NRST_PIN   5
 
 #define SLOT1_BASE 0x08010000
 #define SLOT2_BASE 0x08020000
@@ -218,9 +222,33 @@ bool jump_to_application() {
   uint8_t cmd[1] = { BL_JUMP_APP };
   uint8_t resp[2];
   if (send_stm32_cmd(cmd, 1, resp, 2, 500)) {
-    return (resp[0] == BL_ACK && resp[1] == 0x00);
+    if (resp[0] == BL_ACK && resp[1] == 0x00) {
+      g_bl_connected = false; // STM32 entered user application
+      return true;
+    }
   }
   return false;
+}
+
+// Hardware & Software Reset of STM32 MCU into Bootloader Mode
+void reset_stm32_hw() {
+  Serial.println("[GATEWAY] 🔄 Triggering STM32 Reset into Bootloader...");
+
+  // 1. Send software reset opcode (0x5B) over UART in case STM32 is listening
+  uint8_t cmd[1] = { BL_RESET_MCU };
+  uint8_t resp[1];
+  send_stm32_cmd(cmd, 1, resp, 1, 60);
+
+  // 2. Hardware open-drain reset pulse via NRST pin (D1 -> STM32 NRST)
+  pinMode(STM32_NRST_PIN, OUTPUT);
+  digitalWrite(STM32_NRST_PIN, LOW); // Pull STM32 NRST to GND
+  delay(60);                         // Hold LOW for 60 ms
+  pinMode(STM32_NRST_PIN, INPUT);     // Release back to Hi-Z (pulled to 3.3V by STM32 internal pull-up)
+  delay(180);                        // Wait for bootloader reset and clock stabilization
+
+  g_bl_connected = false;
+  query_bl_version();
+  query_slot_info();
 }
 
 // -------------------------------------------------------------
@@ -325,6 +353,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
   button:hover { filter: brightness(1.1); transform: translateY(-1px); }
   button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
   button.btn-danger { background: var(--danger); color: #fff; }
+  button.btn-warning { background: linear-gradient(135deg, #f6ad55, #ed8936); color: #000; }
   button.btn-secondary { background: rgba(255, 255, 255, 0.1); color: var(--text); border: 1px solid var(--border); }
 
   .log-console {
@@ -384,6 +413,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
     <div class="btn-group">
       <button id="btn-upload" onclick="startUpload()" disabled>Upload Firmware (OTA)</button>
+      <button class="btn-warning" id="btn-reset" onclick="rebootToBootloader()">🔄 Reset to Bootloader</button>
       <button class="btn-danger" id="btn-rollback" onclick="triggerRollback()">Instant Rollback (252ms)</button>
       <button class="btn-secondary" onclick="jumpApplication()">Jump to App</button>
       <button class="btn-secondary" onclick="refreshStatus()">Refresh</button>
@@ -398,6 +428,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
 <script>
 let selectedFile = null;
+let isStm32Connected = false;
 
 function log(msg) {
   const c = document.getElementById('console');
@@ -421,11 +452,13 @@ async function refreshStatus() {
     
     const badge = document.getElementById('conn-badge');
     if (data.connected) {
+      isStm32Connected = true;
       badge.className = 'status-badge status-online';
       badge.textContent = `STM32 Online (v${data.bl_version.join('.')})`;
     } else {
+      isStm32Connected = false;
       badge.className = 'status-badge status-offline';
-      badge.textContent = 'STM32 Offline';
+      badge.textContent = 'App Running (Click Reset)';
     }
 
     if (data.slots && data.slots.valid) {
@@ -452,6 +485,24 @@ async function refreshStatus() {
   }
 }
 
+async function rebootToBootloader() {
+  log('🔄 Triggering STM32 Reset (D1 -> STM32 NRST)...');
+  const btn = document.getElementById('btn-reset');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch('/api/reset', { method: 'POST' });
+    const j = await res.json();
+    log(j.message || 'Reset pulse sent.');
+    setTimeout(() => {
+      refreshStatus();
+      if (btn) btn.disabled = false;
+    }, 400);
+  } catch (e) {
+    log('Reset error: ' + e);
+    if (btn) btn.disabled = false;
+  }
+}
+
 function handleFileSelected(input) {
   if (input.files.length > 0) {
     selectedFile = input.files[0];
@@ -461,7 +512,7 @@ function handleFileSelected(input) {
   }
 }
 
-function startUpload() {
+async function startUpload() {
   if (!selectedFile) return;
 
   const btn = document.getElementById('btn-upload');
@@ -469,6 +520,19 @@ function startUpload() {
   const progBar = document.getElementById('prog-bar');
 
   btn.disabled = true;
+
+  // Auto-reset into Bootloader if STM32 is executing application
+  if (!isStm32Connected) {
+    log('STM32 is running application. Auto-resetting into Bootloader first...');
+    try {
+      await fetch('/api/reset', { method: 'POST' });
+      await new Promise(r => setTimeout(r, 400));
+      await refreshStatus();
+    } catch (e) {
+      log('Auto-reset note: ' + e);
+    }
+  }
+
   progWrap.style.display = 'block';
   progBar.style.width = '0%';
 
@@ -529,7 +593,15 @@ async function jumpApplication() {
   try {
     const res = await fetch('/api/jump', { method: 'POST' });
     const j = await res.json();
-    log(j.success ? 'Application executing on STM32!' : 'Jump failed: ' + j.message);
+    if (j.success) {
+      log('🚀 Application executing on STM32!');
+      isStm32Connected = false;
+      const badge = document.getElementById('conn-badge');
+      badge.className = 'status-badge status-offline';
+      badge.textContent = 'App Running (Click Reset)';
+    } else {
+      log('Jump failed: ' + j.message);
+    }
   } catch (e) {
     log('Jump error: ' + e);
   }
@@ -587,6 +659,17 @@ void handleJump() {
   }
 }
 
+void handleReset() {
+  Serial.println("[HTTP] POST /api/reset received");
+  reset_stm32_hw();
+  String json = "{\"success\":true,\"connected\":";
+  json += (g_bl_connected ? "true" : "false");
+  json += ",\"message\":\"";
+  json += (g_bl_connected ? "STM32 successfully reset to bootloader!" : "Hardware reset pulse sent to STM32 NRST pin.");
+  json += "\"}";
+  server.send(200, "application/json", json);
+}
+
 // Streaming OTA Firmware Upload Handler
 static uint8_t s_upload_target_slot = 1;
 static uint8_t s_upload_sector = 4;
@@ -603,6 +686,12 @@ void handleFileUpload() {
     s_upload_ok = true;
     s_bytes_written = 0;
     s_chunk_len = 0;
+
+    // If STM32 is currently executing application, auto-reset into bootloader!
+    if (!g_bl_connected || !query_bl_version()) {
+      Serial.println("[OTA] STM32 not in bootloader mode. Auto-resetting into Bootloader...");
+      reset_stm32_hw();
+    }
 
     query_slot_info();
     s_upload_target_slot = g_slot_info.valid ? g_slot_info.oldest_slot : 1;
@@ -673,6 +762,9 @@ void setup() {
   Serial.begin(115200);
   delay(100);
 
+  // Initialize STM32 NRST pin to High-Z (input)
+  pinMode(STM32_NRST_PIN, INPUT);
+
   // Initialize SoftwareSerial with default Config (D5=TX, D6=RX)
   stm32Serial.begin(STM32_BAUD, SWSERIAL_8N1, 12, 14);
 
@@ -710,6 +802,7 @@ void setup() {
   // Register Web Routes
   server.on("/", HTTP_GET, handleRoot);
   server.on("/api/status", HTTP_GET, handleStatus);
+  server.on("/api/reset", HTTP_POST, handleReset);
   server.on("/api/rollback", HTTP_POST, handleRollback);
   server.on("/api/jump", HTTP_POST, handleJump);
   server.on("/api/upload", HTTP_POST, handleUploadResponse, handleFileUpload);
